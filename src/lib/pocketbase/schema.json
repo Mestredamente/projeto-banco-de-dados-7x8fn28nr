@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T01:40:32.793Z",
+  "generatedAt": "2026-06-23T01:43:13.299Z",
   "collections": [
     {
       "name": "users",
@@ -752,6 +752,743 @@
         {
           "name": "edit_reason",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "secretary_assignments",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "secretary",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "employer",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "clinic",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clinics"
+        },
+        {
+          "name": "permissions",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "diary_entries",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "patient",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["pessoal", "sentimentos"]
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mood",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mood_score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_visible_to_professional",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "entry_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "questionnaires",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "questions",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "questionnaire_assignments",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "questionnaire",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "questionnaires"
+        },
+        {
+          "name": "patient",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "assigned_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["pendente", "respondido", "expirado"]
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "questionnaire_responses",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "assignment",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "questionnaire_assignments"
+        },
+        {
+          "name": "responses",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "submitted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "financial_records",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "patient",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "clinic",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clinics"
+        },
+        {
+          "name": "appointment",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "appointments"
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["sessao", "pacote", "mensalidade", "reembolso", "estorno", "outro"]
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "discount",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "total",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "payment_method",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "payment_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["pendente", "pago", "atrasado", "cancelado", "estornado"]
+        },
+        {
+          "name": "receipt_url",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "financial_repasses",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "clinic",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clinics"
+        },
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "financial_record",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "financial_records"
+        },
+        {
+          "name": "session_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "commission_percentage",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "professional_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "clinic_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["pendente", "repassado", "cancelado"]
+        },
+        {
+          "name": "repassed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "contracts",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "patient",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "clinic",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clinics"
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "signed_by_patient",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "signed_by_professional",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "patient_signed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "professional_signed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valid_until",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["rascunho", "pendente_assinatura", "ativo", "encerrado"]
+        },
+        {
+          "name": "deleted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "messages",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "sender",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "receiver",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "patient",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "message_type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["texto", "audio", "imagem", "arquivo"]
+        },
+        {
+          "name": "attachment_url",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "read_at",
+          "type": "date",
           "required": false,
           "system": false
         },

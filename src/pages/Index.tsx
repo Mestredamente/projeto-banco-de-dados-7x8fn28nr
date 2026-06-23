@@ -12,12 +12,10 @@ export default function Index() {
     try {
       const today = new Date().toISOString().split('T')[0]
       const [todayApps, patientsData] = await Promise.all([
-        pb
-          .collection('appointments')
-          .getList(1, 5, {
-            filter: `scheduled_date >= "${today} 00:00:00" && scheduled_date <= "${today} 23:59:59"`,
-            expand: 'patient',
-          }),
+        pb.collection('appointments').getList(1, 5, {
+          filter: `scheduled_date >= "${today} 00:00:00" && scheduled_date <= "${today} 23:59:59"`,
+          expand: 'patient',
+        }),
         pb.collection('patients').getList(1, 1, { filter: 'is_active = true' }),
       ])
 
