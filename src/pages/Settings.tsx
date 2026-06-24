@@ -31,6 +31,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { ShieldCheck, AlertTriangle } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
@@ -101,6 +103,9 @@ export default function Settings() {
   })
   const [pendingBillings, setPendingBillings] = useState<any[]>([])
   const [notificationLogs, setNotificationLogs] = useState<any[]>([])
+  const [simulateCrisisOpen, setSimulateCrisisOpen] = useState(false)
+  const [simulatedText, setSimulatedText] = useState('')
+  const [simulatedAlert, setSimulatedAlert] = useState<{ trigger: string } | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -257,6 +262,45 @@ export default function Settings() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const runSimulation = () => {
+    const content = simulatedText.toLowerCase()
+    const systemTriggers = [
+      'vou morrer',
+      'quero morrer',
+      'sumir',
+      'me matar',
+      'suicídio',
+      'suicida',
+      'automutilação',
+      'cortar',
+      'machucar',
+      'sangrar',
+      'não aguento mais',
+      'não quero mais viver',
+      'acabar com tudo',
+      'violento',
+      'agressivo',
+      'matar alguém',
+    ]
+    const normalizedContent = ' ' + content.replace(/[.,!?\n\r]/g, ' ') + ' '
+    let detectedTrigger = null
+    for (const trigger of systemTriggers) {
+      if (normalizedContent.includes(' ' + trigger + ' ')) {
+        detectedTrigger = trigger
+        break
+      }
+    }
+    if (detectedTrigger) {
+      setSimulatedAlert({ trigger: detectedTrigger })
+    } else {
+      toast({
+        title: 'Nenhum gatilho detectado',
+        description: 'O texto não acionou nenhum alerta de crise.',
+      })
+      setSimulatedAlert(null)
     }
   }
 
@@ -575,6 +619,24 @@ export default function Settings() {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <h3 className="text-lg font-medium flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-red-600" /> Simulação de Alerta de Crise
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Teste o sistema de detecção de gatilhos do Diário de Sentimentos sem gerar
+                    registros reais ou notificações.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-red-200 text-red-700 hover:bg-red-50"
+                    onClick={() => setSimulateCrisisOpen(true)}
+                  >
+                    Simular Alerta
+                  </Button>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
                   <h3 className="text-lg font-medium">Templates de Mensagem</h3>
                   <p className="text-sm text-gray-500">
                     Variáveis disponíveis: [PACIENTE], [PSICÓLOGO], [HORÁRIO], [DATA], [LINK],
@@ -750,6 +812,58 @@ export default function Settings() {
               disabled={cancelLoading}
             >
               {cancelLoading ? 'Cancelando...' : 'Sim, quero cancelar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={simulateCrisisOpen} onOpenChange={setSimulateCrisisOpen}>
+        <DialogContent className="sm:max-w-md border-t-4 border-t-red-600">
+          <DialogHeader>
+            <DialogTitle>Simulador de Gatilho</DialogTitle>
+            <DialogDescription>
+              Digite um texto para testar o detector de crises do Diário de Sentimentos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              value={simulatedText}
+              onChange={(e) => setSimulatedText(e.target.value)}
+              placeholder="Ex: Não aguento mais, vou sumir."
+              rows={4}
+            />
+            {simulatedAlert && (
+              <Alert className="bg-red-600 text-white border-red-800 animate-fade-in-down shadow-lg">
+                <AlertTriangle className="h-5 w-5 text-white" />
+                <AlertTitle className="font-bold flex items-center gap-2">
+                  🚨 ALERTA DE CRISE
+                  <Badge variant="secondary" className="bg-white/20 text-white text-[10px]">
+                    🔬 SIMULAÇÃO
+                  </Badge>
+                </AlertTitle>
+                <AlertDescription className="text-red-50 mt-1">
+                  Gatilho detectado: <strong>"{simulatedAlert.trigger}"</strong>
+                  <br />
+                  <span className="text-xs mt-2 block opacity-80">
+                    (Nenhum registro ou notificação real foi gerado)
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSimulateCrisisOpen(false)
+                setSimulatedAlert(null)
+                setSimulatedText('')
+              }}
+            >
+              Fechar
+            </Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={runSimulation}>
+              Testar Gatilhos
             </Button>
           </DialogFooter>
         </DialogContent>

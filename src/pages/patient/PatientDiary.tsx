@@ -63,22 +63,6 @@ export default function PatientDiary() {
         entry_date: new Date().toISOString(),
       })
 
-      if (isCrisis) {
-        const linked = await pb
-          .collection('patient_professionals')
-          .getFullList({ filter: `patient="${patient.id}"` })
-        for (const rel of linked) {
-          await pb.collection('notifications').create({
-            profile: rel.professional,
-            patient: patient.id,
-            title: 'Alerta de Sentimentos',
-            body: `O paciente registrou palavras de alerta no diário (${selectedWords.join(', ')}).`,
-            type: 'alerta_risco',
-            reference_table: 'diary_entries',
-            reference_id: record.id,
-          })
-        }
-      }
       toast({ title: 'Registro salvo', description: 'Seu diário foi atualizado com sucesso.' })
       setScore(5)
       setSelectedWords([])

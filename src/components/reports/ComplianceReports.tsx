@@ -12,6 +12,7 @@ import {
 import { format, differenceInDays, differenceInYears } from 'date-fns'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useAuth } from '@/hooks/use-auth'
 
 export function ComplianceReports({ startDate, endDate }: any) {
   const [pendingNotes, setPendingNotes] = useState<any[]>([])
@@ -19,6 +20,8 @@ export function ComplianceReports({ startDate, endDate }: any) {
   const [retentionAlerts, setRetentionAlerts] = useState<any[]>([])
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [auditError, setAuditError] = useState(false)
+  const [crisisLogs, setCrisisLogs] = useState<any[]>([])
+  const { user } = useAuth()
 
   useEffect(() => {
     async function load() {
@@ -39,6 +42,13 @@ export function ComplianceReports({ startDate, endDate }: any) {
 
         const retention = patients.filter((p) => differenceInYears(now, new Date(p.created)) >= 5)
         setRetentionAlerts(retention)
+
+        const crises = await pb.collection('session_notes').getFullList({
+          filter: `evolution_type = 'Intervenção em crise' && created >= '${startDate}' && created <= '${endDate}'`,
+          expand: 'patient,professional',
+          sort: '-created',
+        })
+        setCrisisLogs(crises)
 
         try {
           const logs = await pb.collection('audit_logs').getList(1, 20, {
@@ -140,6 +150,60 @@ export function ComplianceReports({ startDate, endDate }: any) {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-md text-red-700 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" /> Relatório de Crises
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Paciente</TableHead>
+                <TableHead>Profissional</TableHead>
+                <TableHead>Ação / Registro</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {crisisLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-4 text-muted-foreground text-xs">
+                    Nenhum evento de crise registrado no período.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                crisisLogs.map((log) => {
+                  const isOwn = log.professional === user?.id
+                  const isAdmin = ['gestor_saas', 'admin_clinica'].includes(user?.role || '')
+                  const anonymize = isAdmin && !isOwn
+                  const patientName = anonymize
+                    ? `ID: ${log.expand?.patient?.id.substring(0, 5)}***`
+                    : log.expand?.patient?.name
+                  const actionText = anonymize
+                    ? 'Detalhes preservados (Sigilo Profissional)'
+                    : log.content
+
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {format(new Date(log.created), 'dd/MM/yyyy HH:mm')}
+                      </TableCell>
+                      <TableCell className="font-medium text-xs">{patientName}</TableCell>
+                      <TableCell className="text-xs">{log.expand?.professional?.name}</TableCell>
+                      <TableCell className="text-xs max-w-xs truncate" title={log.content}>
+                        {actionText}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

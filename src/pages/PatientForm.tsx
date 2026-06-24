@@ -28,6 +28,8 @@ export default function PatientForm() {
       diary: true,
       financial: true,
       evolutions: true,
+      life_protection_consent: false,
+      custom_triggers: '',
     },
   })
 
@@ -43,10 +45,13 @@ export default function PatientForm() {
             cpf: record.cpf || '',
             date_of_birth: record.date_of_birth ? record.date_of_birth.substring(0, 10) : '',
             notes: record.notes || '',
-            portal_permissions: record.portal_permissions || {
+            portal_permissions: {
               diary: true,
               financial: true,
               evolutions: true,
+              life_protection_consent: false,
+              custom_triggers: '',
+              ...(record.portal_permissions || {}),
             },
           })
         })
@@ -55,6 +60,16 @@ export default function PatientForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (formData.portal_permissions.diary && !formData.portal_permissions.life_protection_consent) {
+      toast({
+        title: 'Erro de Consentimento',
+        description:
+          'Para habilitar o Diário de Sentimentos, o consentimento de Proteção à Vida (LGPD/CFP) é obrigatório.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setLoading(true)
     try {
       const dataToSave = {
@@ -189,6 +204,58 @@ export default function PatientForm() {
                 }
               />
             </div>
+
+            {formData.portal_permissions.diary && (
+              <div className="p-4 bg-red-50 rounded-lg border border-red-100 space-y-4 animate-fade-in-down">
+                <div className="flex items-start space-x-3">
+                  <Switch
+                    checked={formData.portal_permissions.life_protection_consent}
+                    onCheckedChange={(v) =>
+                      setFormData({
+                        ...formData,
+                        portal_permissions: {
+                          ...formData.portal_permissions,
+                          life_protection_consent: v,
+                        },
+                      })
+                    }
+                  />
+                  <div className="space-y-1">
+                    <Label className="text-sm font-bold text-red-900">
+                      Termo de Proteção à Vida (Obrigatório)
+                    </Label>
+                    <p className="text-xs text-red-700 leading-relaxed">
+                      "Autorizo a quebra de sigilo em caso de risco iminente à minha vida ou de
+                      terceiros, conforme previsto no Código de Ética do Psicólogo e na LGPD."
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2 pl-12">
+                  <Label className="text-sm text-red-900">
+                    Palavras-Gatilho Personalizadas (opcional)
+                  </Label>
+                  <Input
+                    className="border-red-200 bg-white"
+                    placeholder="Ex: remédio, pular, ponte (separadas por vírgula)"
+                    value={formData.portal_permissions.custom_triggers || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        portal_permissions: {
+                          ...formData.portal_permissions,
+                          custom_triggers: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <p className="text-[10px] text-red-700">
+                    Estas palavras gerarão um alerta imediato caso o paciente as utilize no diário,
+                    além das palavras padrão do sistema.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
               <div className="space-y-1">
                 <Label className="text-base text-gray-900">Financeiro e Recibos</Label>

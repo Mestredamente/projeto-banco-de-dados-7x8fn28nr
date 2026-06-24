@@ -49,6 +49,14 @@ import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { WelcomeTour } from '@/components/WelcomeTour'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { toast } from '@/hooks/use-toast'
 
 export default function Index() {
   const { user } = useAuth()
@@ -56,6 +64,9 @@ export default function Index() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isFirstTime, setIsFirstTime] = useState(false)
+  const [crisisAlerts, setCrisisAlerts] = useState<any[]>([])
+  const [selectedCrisis, setSelectedCrisis] = useState<any>(null)
+  const [confirmingEmergency, setConfirmingEmergency] = useState(false)
 
   const getPeriodDates = (period: string) => {
     const now = new Date()
@@ -205,13 +216,71 @@ export default function Index() {
     }
   }
 
+  const loadCrisisAlerts = async () => {
+    if (!user) return
+    try {
+      const alerts = await pb.collection('notifications').getFullList({
+        filter: `profile = "${user.id}" && type = "crisis" && read = false`,
+        expand: 'patient',
+      })
+      setCrisisAlerts(alerts)
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+
   useEffect(() => {
     loadData()
+    loadCrisisAlerts()
   }, [user, filter])
 
   useRealtime('appointments', () => loadData())
   useRealtime('financial_records', () => loadData())
   useRealtime('clinical_insights', () => loadData())
+  useRealtime('notifications', () => loadCrisisAlerts())
+
+  const handleCrisisAction = async (actionType: 'emergency' | 'cvv' | 'aware') => {
+    if (!selectedCrisis) return
+    try {
+      let actionText = ''
+
+      if (actionType === 'emergency') {
+        if (!confirmingEmergency) {
+          setConfirmingEmergency(true)
+          return
+        }
+        await pb.send('/backend/v1/crisis/contact', {
+          method: 'POST',
+          body: JSON.stringify({ patient_id: selectedCrisis.patient }),
+        })
+        actionText = `Acionado contato de emergência: ${selectedCrisis.expand?.patient?.emergency_contact_name || 'Desconhecido'} (${selectedCrisis.expand?.patient?.emergency_contact_phone || 'Sem número'}). Sistema enviou aviso automático.`
+      } else if (actionType === 'cvv') {
+        actionText = 'Orientado contato com CVV (188).'
+      } else {
+        actionText = 'Ciente do alerta, nenhuma ação externa imediata registrada.'
+      }
+
+      await pb.collection('session_notes').create({
+        patient: selectedCrisis.patient,
+        professional: user.id,
+        content: `Gatilho detectado: ${selectedCrisis.body}\n\nAção: ${actionText}`,
+        evolution_type: 'Intervenção em crise',
+        status: 'finalizado',
+        session_date: new Date().toISOString(),
+      })
+
+      await pb
+        .collection('notifications')
+        .update(selectedCrisis.id, { read: true, read_at: new Date().toISOString() })
+
+      toast({ title: 'Protocolo registrado com sucesso' })
+      setSelectedCrisis(null)
+      setConfirmingEmergency(false)
+      loadCrisisAlerts()
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    }
+  }
 
   const faturamentoTotal = useMemo(() => {
     if (!data) return 0
@@ -277,6 +346,32 @@ export default function Index() {
 
   return (
     <div className="space-y-8 animate-fade-in pb-10">
+      {crisisAlerts.length > 0 && (
+        <div className="space-y-3">
+          {crisisAlerts.map((alert) => (
+            <Alert
+              key={alert.id}
+              className="bg-red-600 text-white border-red-800 cursor-pointer shadow-lg animate-fade-in-down"
+              onClick={() => {
+                setSelectedCrisis(alert)
+                setConfirmingEmergency(false)
+              }}
+            >
+              <AlertTriangle className="h-6 w-6 text-white" />
+              <AlertTitle className="font-bold text-lg">
+                🚨 ALERTA DE CRISE — {alert.expand?.patient?.name}
+              </AlertTitle>
+              <AlertDescription className="text-red-50 mt-1">
+                {alert.body}
+                <div className="mt-3 font-semibold underline text-white">
+                  Clique aqui para abrir o protocolo de intervenção imediata.
+                </div>
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -630,6 +725,93 @@ export default function Index() {
       )}
 
       <WelcomeTour />
+
+      <Dialog
+        open={!!selectedCrisis}
+        onOpenChange={(o) => {
+          if (!o) {
+            setSelectedCrisis(null)
+            setConfirmingEmergency(false)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md border-t-4 border-t-red-600">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Protocolo de Crise
+            </DialogTitle>
+            <DialogDescription>
+              Ação imediata para <strong>{selectedCrisis?.expand?.patient?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4">
+            {!confirmingEmergency ? (
+              <>
+                <Button
+                  onClick={() => handleCrisisAction('emergency')}
+                  variant="outline"
+                  className="w-full justify-start h-auto p-4 flex flex-col items-start gap-1 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                >
+                  <span className="font-bold flex items-center gap-2">
+                    📞 Acionar contato de emergência
+                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-normal text-left">
+                    {selectedCrisis?.expand?.patient?.emergency_contact_name || 'Não cadastrado'} -{' '}
+                    {selectedCrisis?.expand?.patient?.emergency_contact_phone || 'Sem número'}
+                  </span>
+                </Button>
+                <Button
+                  onClick={() => handleCrisisAction('cvv')}
+                  variant="outline"
+                  className="w-full justify-start h-auto p-4 flex flex-col items-start gap-1"
+                >
+                  <span className="font-bold flex items-center gap-2">📞 Acionar CVV (188)</span>
+                  <span className="text-xs text-muted-foreground whitespace-normal text-left">
+                    Registrar que o paciente foi orientado a ligar para o Centro de Valorização da
+                    Vida.
+                  </span>
+                </Button>
+                <Button
+                  onClick={() => handleCrisisAction('aware')}
+                  variant="outline"
+                  className="w-full justify-start h-auto p-4 flex flex-col items-start gap-1"
+                >
+                  <span className="font-bold flex items-center gap-2">
+                    ✅ Já estou ciente. Apenas registrar.
+                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-normal text-left">
+                    Apenas registrar a ciência do evento no prontuário do paciente. Nenhuma ação
+                    externa será tomada.
+                  </span>
+                </Button>
+              </>
+            ) : (
+              <div className="bg-red-50 p-4 rounded-md border border-red-100">
+                <p className="font-medium text-red-900 mb-2">
+                  Deseja que o sistema envie uma mensagem automática para o contato?
+                </p>
+                <p className="text-sm text-red-700 mb-4">
+                  A seguinte mensagem SMS será enviada: "O Syntra identificou um sinal de alerta no
+                  diário de {selectedCrisis?.expand?.patient?.name}. Entre em contato com urgência.
+                  Em caso de crise, ligue CVV 188."
+                </p>
+                <div className="flex justify-end gap-3">
+                  <Button variant="outline" onClick={() => setConfirmingEmergency(false)}>
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={() => handleCrisisAction('emergency')}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Sim, Enviar Alerta
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

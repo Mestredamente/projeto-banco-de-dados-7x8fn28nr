@@ -20,6 +20,7 @@ import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { PatientEvolutions } from '@/components/patients/PatientEvolutions'
 import { PatientInsights } from '@/components/patients/PatientInsights'
+import { PatientCrisisInterventions } from '@/components/patients/PatientCrisisInterventions'
 
 export default function PatientProfile() {
   const { id } = useParams()
@@ -161,7 +162,17 @@ export default function PatientProfile() {
           <TabsTrigger value="emergencia">Emergência</TabsTrigger>
           <TabsTrigger value="clinico">Clínico</TabsTrigger>
           <TabsTrigger value="lgpd">Consentimentos</TabsTrigger>
-          {isPsychologist && <TabsTrigger value="observacoes">Observações</TabsTrigger>}
+          {isPsychologist && (
+            <>
+              <TabsTrigger value="observacoes">Observações</TabsTrigger>
+              <TabsTrigger
+                value="crises"
+                className="text-red-600 data-[state=active]:text-red-700 font-medium"
+              >
+                Crises
+              </TabsTrigger>
+            </>
+          )}
         </TabsList>
 
         <TabsContent value="prontuario" className="mt-6">
@@ -339,18 +350,23 @@ export default function PatientProfile() {
         </TabsContent>
 
         {isPsychologist && (
-          <TabsContent value="observacoes" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Observações Internas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {patient.notes || 'Nenhuma observação registrada.'}
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <>
+            <TabsContent value="observacoes" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Observações Internas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {patient.notes || 'Nenhuma observação registrada.'}
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="crises" className="mt-6">
+              <PatientCrisisInterventions patientId={patient.id} />
+            </TabsContent>
+          </>
         )}
       </Tabs>
 
