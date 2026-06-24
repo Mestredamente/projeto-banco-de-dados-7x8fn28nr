@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,39 +8,24 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { BrainCircuit } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetLoading, setResetLoading] = useState(false)
-  const [resetOpen, setResetOpen] = useState(false)
-
-  const { signIn, requestPasswordReset } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     const { error } = await signIn(email, password)
-    setLoading(false)
-
     if (error) {
       toast({
         title: 'Erro ao entrar',
@@ -50,117 +35,72 @@ export default function Login() {
     } else {
       navigate('/')
     }
-  }
-
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setResetLoading(true)
-    const { error } = await requestPasswordReset(resetEmail)
-    setResetLoading(false)
-    if (error) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível enviar o email de recuperação.',
-        variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: 'Email enviado',
-        description: 'Verifique sua caixa de entrada para redefinir a senha.',
-      })
-      setResetOpen(false)
-    }
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <Card className="w-full max-w-md shadow-lg border-t-4 border-t-teal-500">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold tracking-tight">Login Seguro</CardTitle>
-          <CardDescription>Acesse o Sistema de Gestão Clínica</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Senha</Label>
-                <Dialog open={resetOpen} onOpenChange={setResetOpen}>
-                  <DialogTrigger asChild>
-                    <button type="button" className="text-sm text-teal-600 hover:underline">
-                      Esqueci minha senha
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Recuperar Senha</DialogTitle>
-                      <DialogDescription>
-                        Digite seu email para receber um link de recuperação.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleReset} className="space-y-4 mt-4">
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={resetEmail}
-                          onChange={(e) => setResetEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <DialogFooter>
-                        <Button
-                          type="submit"
-                          disabled={resetLoading}
-                          className="bg-teal-600 hover:bg-teal-700 text-white"
-                        >
-                          {resetLoading ? 'Enviando...' : 'Enviar Link'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4">
+      <div className="w-full max-w-md space-y-4 animate-fade-in-up">
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="bg-teal-600 p-3 rounded-xl mb-4">
+            <BrainCircuit className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Bem-vindo de volta</h1>
+          <p className="text-muted-foreground mt-2">Acesse sua conta para continuar</p>
+        </div>
+
+        <Card className="shadow-lg border-0">
+          <CardHeader>
+            <CardTitle>Login</CardTitle>
+            <CardDescription>Insira suas credenciais para acessar o sistema.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex-col gap-4">
-            <Button
-              type="submit"
-              className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-              disabled={loading}
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </Button>
-            <div className="text-center text-sm text-gray-500 w-full">
-              Não tem uma conta?{' '}
-              <button
-                type="button"
-                onClick={() => navigate('/signup')}
-                className="text-teal-600 hover:underline font-medium"
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                disabled={loading}
               >
-                Criar conta gratuita por 30 dias
-              </button>
+                {loading ? 'Entrando...' : 'Entrar'}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4 border-t pt-6 bg-gray-50/50 rounded-b-xl">
+            <div className="text-sm text-center text-muted-foreground">
+              Não tem uma conta?{' '}
+              <Link to="/signup" className="text-teal-600 hover:underline font-medium">
+                Cadastre-se
+              </Link>
+            </div>
+            <div className="text-sm text-center text-red-600 font-bold">
+              Precisa de ajuda? CVV 188
             </div>
           </CardFooter>
-        </form>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -72,7 +72,7 @@ export function PatientCrisisInterventions({ patientId }: { patientId: string })
           onClick={() => setOpen(true)}
           className="bg-red-600 hover:bg-red-700 text-white shrink-0"
         >
-          <Plus className="h-4 w-4 mr-2" /> Registro Manual
+          <Plus className="h-4 w-4 mr-2" /> Nova Intervenção
         </Button>
       </div>
 

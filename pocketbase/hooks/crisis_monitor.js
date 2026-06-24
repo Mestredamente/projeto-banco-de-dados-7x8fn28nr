@@ -107,7 +107,7 @@ onRecordAfterCreateSuccess((e) => {
       notif.set('type', 'crisis')
       notif.set('reference_table', 'diary_entries')
       notif.set('reference_id', e.record.id)
-      notif.set('channel', 'in_app')
+      notif.set('channel', 'push')
       notif.set('status', 'Entregue')
       notif.set('read', false)
       $app.save(notif)

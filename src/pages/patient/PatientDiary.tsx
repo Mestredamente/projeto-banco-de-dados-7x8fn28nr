@@ -76,6 +76,21 @@ export default function PatientDiary() {
 
   if (loading) return <div>Carregando...</div>
 
+  const hasConsent = patient?.portal_permissions?.life_protection_consent === true
+
+  if (!hasConsent) {
+    return (
+      <div className="space-y-6 animate-fade-in text-center p-12">
+        <HeartPulse className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-700">Recurso Desativado</h2>
+        <p className="text-gray-500 max-w-md mx-auto mt-2">
+          O Diário de Sentimentos está desativado. É necessário autorizar o Termo de Proteção à Vida
+          (LGPD) junto ao seu profissional para utilizar esta ferramenta.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">

@@ -177,7 +177,7 @@ export default function PatientProfile() {
                 value="crises"
                 className="text-red-600 data-[state=active]:text-red-700 font-medium"
               >
-                Crises
+                Intervenções em Crise
               </TabsTrigger>
               <TabsTrigger value="encaminhamentos">Encaminhamentos</TabsTrigger>
             </>

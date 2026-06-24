@@ -1,181 +1,148 @@
-import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
-import { usePatient } from '@/hooks/use-patient'
-import pb from '@/lib/pocketbase/client'
-import { format, isToday, isTomorrow, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Calendar, Video, MapPin, HeartPulse, Clock, FileText } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  PhoneCall,
+  HeartPulse,
+  ShieldAlert,
+  Calendar as CalendarIcon,
+  DollarSign,
+  FileText,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function PatientDashboard() {
   const { user } = useAuth()
-  const { patient, loading } = usePatient()
-  const [nextAppointment, setNextAppointment] = useState<any>(null)
-  const [streak, setStreak] = useState(0)
-
-  useEffect(() => {
-    if (!patient) return
-    const fetchDashboardData = async () => {
-      try {
-        const todayStr = format(new Date(), 'yyyy-MM-dd')
-        const apps = await pb.collection('appointments').getList(1, 1, {
-          filter: `patient="${patient.id}" && scheduled_date >= "${todayStr}" && status != 'cancelado'`,
-          sort: 'scheduled_date,start_time',
-          expand: 'professional',
-        })
-        setNextAppointment(apps.items[0])
-
-        const diaries = await pb.collection('diary_entries').getFullList({
-          filter: `patient="${patient.id}"`,
-          sort: '-entry_date',
-        })
-
-        if (diaries.length > 0) {
-          let currentStreak = 0
-          let curr = new Date()
-          const dates = new Set(
-            diaries.map((d: any) => format(parseISO(d.entry_date), 'yyyy-MM-dd')),
-          )
-
-          if (dates.has(format(curr, 'yyyy-MM-dd'))) {
-            currentStreak++
-            curr.setDate(curr.getDate() - 1)
-          } else if (dates.has(format(new Date(curr.setDate(curr.getDate() - 1)), 'yyyy-MM-dd'))) {
-            currentStreak++
-            curr.setDate(curr.getDate() - 1)
-          }
-
-          while (dates.has(format(curr, 'yyyy-MM-dd'))) {
-            currentStreak++
-            curr.setDate(curr.getDate() - 1)
-          }
-          setStreak(currentStreak)
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    }
-    fetchDashboardData()
-  }, [patient])
-
-  if (loading) return <div>Carregando...</div>
-
-  const perms = patient?.portal_permissions || { diary: true, financial: true, evolutions: true }
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
+    <div className="space-y-6 animate-fade-in p-6 max-w-5xl mx-auto pb-12">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Olá, {user?.name?.split(' ')[0]}
+        <h1 className="text-3xl font-bold text-gray-900">
+          Olá, {user?.name?.split(' ')[0] || 'Paciente'}
         </h1>
-        <p className="text-gray-500">{format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}</p>
+        <p className="text-muted-foreground">Bem-vindo ao seu portal.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-l-4 border-l-teal-500 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-teal-700">
-              <Calendar className="h-5 w-5" />
-              Próxima Sessão
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {nextAppointment ? (
-              <div className="space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {format(parseISO(nextAppointment.scheduled_date), 'dd/MM/yyyy')}
-                    </p>
-                    <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                      <Clock className="h-4 w-4" /> {nextAppointment.start_time} -{' '}
-                      {nextAppointment.end_time}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Psicólogo: {nextAppointment.expand?.professional?.name}
-                    </p>
-                  </div>
-                  <div className="bg-teal-50 dark:bg-teal-900/30 text-teal-700 px-3 py-1 rounded-full text-xs font-medium uppercase">
-                    {nextAppointment.session_type}
-                  </div>
-                </div>
-                {nextAppointment.session_type?.toLowerCase() === 'online' &&
-                  nextAppointment.meeting_link && (
-                    <Button
-                      variant="outline"
-                      className="w-full text-teal-600 border-teal-200"
-                      asChild
-                    >
-                      <a href={nextAppointment.meeting_link} target="_blank" rel="noreferrer">
-                        <Video className="mr-2 h-4 w-4" /> Acessar Chamada
-                      </a>
-                    </Button>
-                  )}
-                {nextAppointment.session_type?.toLowerCase() === 'presencial' && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 p-2 rounded-md">
-                    <MapPin className="h-4 w-4 text-gray-400" /> Consulta presencial no consultório.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="py-6 text-center text-gray-500">
-                Nenhuma sessão agendada no momento.
-              </div>
-            )}
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <Button variant="link" className="w-full text-teal-600" asChild>
-                <Link to="/patient-portal/agenda">Ver todos os agendamentos</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="inicio">
+        <TabsList className="bg-gray-100 dark:bg-gray-800">
+          <TabsTrigger value="inicio">Início</TabsTrigger>
+          <TabsTrigger value="ajuda" className="text-red-600 data-[state=active]:text-red-700">
+            Ajuda e Emergência
+          </TabsTrigger>
+        </TabsList>
 
-        {perms.diary && (
-          <Card className="bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/40 dark:to-emerald-950/40 border-none shadow-sm">
+        <TabsContent value="inicio" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="hover:shadow-md transition-shadow border-t-4 border-t-teal-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CalendarIcon className="h-5 w-5 text-teal-600" />
+                  Minha Agenda
+                </CardTitle>
+                <CardDescription>Próximas sessões</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  to="/patient-portal/agenda"
+                  className="text-teal-600 font-medium hover:underline text-sm"
+                >
+                  Ver agendamentos →
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-t-4 border-t-rose-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <HeartPulse className="h-5 w-5 text-rose-600" />
+                  Meu Diário
+                </CardTitle>
+                <CardDescription>Escala de sentimentos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  to="/patient-portal/diary"
+                  className="text-rose-600 font-medium hover:underline text-sm"
+                >
+                  Acessar diário →
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-t-4 border-t-blue-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  Evoluções
+                </CardTitle>
+                <CardDescription>Resumos compartilhados</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  to="/patient-portal/evolutions"
+                  className="text-blue-600 font-medium hover:underline text-sm"
+                >
+                  Ver evoluções →
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-t-4 border-t-green-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  Financeiro
+                </CardTitle>
+                <CardDescription>Faturas e recibos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  to="/patient-portal/financial"
+                  className="text-green-600 font-medium hover:underline text-sm"
+                >
+                  Acessar financeiro →
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="ajuda" className="mt-6">
+          <Card className="border-red-100 bg-red-50/30">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-teal-700">
-                <HeartPulse className="h-5 w-5" />
-                Diário de Sentimentos
+              <CardTitle className="flex items-center gap-2 text-red-800">
+                <ShieldAlert className="h-5 w-5" />
+                Contatos de Emergência
               </CardTitle>
+              <CardDescription className="text-red-700/80">
+                Se você está passando por um momento difícil, busque ajuda imediatamente.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-300">
-                Como você está se sentindo hoje? Registrar seu humor ajuda no acompanhamento
-                terapêutico.
-              </p>
-              <div className="flex items-center gap-2 text-orange-600 font-medium bg-orange-50 dark:bg-orange-950/50 p-3 rounded-lg w-fit">
-                🔥 {streak} dias seguidos
+              <div className="bg-white p-6 rounded-lg border border-red-100 shadow-sm flex items-start gap-4">
+                <div className="bg-red-100 p-3 rounded-full shrink-0">
+                  <PhoneCall className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-red-900">
+                    Precisa de ajuda urgente? CVV 188
+                  </h3>
+                  <p className="text-sm text-red-700 mt-2 leading-relaxed">
+                    Você não está sozinho. O Centro de Valorização da Vida (CVV) realiza apoio
+                    emocional e prevenção do suicídio, atendendo de forma voluntária e gratuita
+                    todas as pessoas que querem e precisam conversar, sob total sigilo.
+                  </p>
+                  <div className="mt-4">
+                    <span className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md font-bold">
+                      <PhoneCall className="h-4 w-4" /> Ligue 188 (24h)
+                    </span>
+                  </div>
+                </div>
               </div>
-              <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white" asChild>
-                <Link to="/patient-portal/diary">Registrar agora</Link>
-              </Button>
             </CardContent>
           </Card>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {perms.evolutions && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-700">
-                <FileText className="h-5 w-5" />
-                Resumos e Orientações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-500 mb-4">
-                Acesse as notas e orientações compartilhadas pelo seu psicólogo.
-              </p>
-              <Button variant="outline" className="w-full" asChild>
-                <Link to="/patient-portal/evolutions">Ver Evoluções</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

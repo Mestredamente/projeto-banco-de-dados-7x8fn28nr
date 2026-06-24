@@ -362,7 +362,8 @@ export default function Index() {
                 🚨 ALERTA DE CRISE — {alert.expand?.patient?.name}
               </AlertTitle>
               <AlertDescription className="text-red-50 mt-1">
-                {alert.body}
+                <div className="mb-2">{alert.body}</div>
+                <div className="font-bold text-white mb-2">📞 Ligue CVV 188</div>
                 <div className="mt-3 font-semibold underline text-white">
                   Clique aqui para abrir o protocolo de intervenção imediata.
                 </div>
@@ -764,12 +765,13 @@ export default function Index() {
                 <Button
                   onClick={() => handleCrisisAction('cvv')}
                   variant="outline"
-                  className="w-full justify-start h-auto p-4 flex flex-col items-start gap-1"
+                  className="w-full justify-start h-auto p-4 flex flex-col items-start gap-1 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200"
                 >
-                  <span className="font-bold flex items-center gap-2">📞 Acionar CVV (188)</span>
+                  <span className="font-bold flex items-center gap-2">
+                    📞 Acionar CVV — Centro de Valorização da Vida (188)
+                  </span>
                   <span className="text-xs text-muted-foreground whitespace-normal text-left">
-                    Registrar que o paciente foi orientado a ligar para o Centro de Valorização da
-                    Vida.
+                    CVV — Centro de Valorização da Vida. Ligue 188 (24h).
                   </span>
                 </Button>
                 <Button
