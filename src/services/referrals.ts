@@ -5,28 +5,22 @@ export const createReferral = (data: any) => pb.collection('referrals').create(d
 export const updateReferral = (id: string, data: any) => pb.collection('referrals').update(id, data)
 
 export const getSentReferrals = () =>
-  pb
-    .collection('referrals')
-    .getList(1, 50, {
-      filter: `source = '${pb.authStore.record?.id}'`,
-      sort: '-created',
-      expand: 'patient,destination',
-    })
+  pb.collection('referrals').getList(1, 50, {
+    filter: `source = '${pb.authStore.record?.id}'`,
+    sort: '-created',
+    expand: 'patient,destination',
+  })
 
 export const getReceivedReferrals = () =>
-  pb
-    .collection('referrals')
-    .getList(1, 50, {
-      filter: `destination = '${pb.authStore.record?.id}'`,
-      sort: '-created',
-      expand: 'patient,source',
-    })
+  pb.collection('referrals').getList(1, 50, {
+    filter: `destination = '${pb.authStore.record?.id}'`,
+    sort: '-created',
+    expand: 'patient,source',
+  })
 
 export const getPatientReferrals = (patientId: string) =>
-  pb
-    .collection('referrals')
-    .getFullList({
-      filter: `patient = '${patientId}'`,
-      sort: '-created',
-      expand: 'source,destination',
-    })
+  pb.collection('referrals').getFullList({
+    filter: `patient = '${patientId}'`,
+    sort: '-created',
+    expand: 'source,destination',
+  })
