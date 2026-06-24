@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -18,6 +19,7 @@ import { toast } from '@/components/ui/use-toast'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { PatientEvolutions } from '@/components/patients/PatientEvolutions'
+import { PatientInsights } from '@/components/patients/PatientInsights'
 
 export default function PatientProfile() {
   const { id } = useParams()
@@ -146,9 +148,16 @@ export default function PatientProfile() {
       </div>
 
       <Tabs defaultValue="dados" className="w-full">
-        <TabsList className="bg-gray-100 dark:bg-gray-800 grid grid-cols-2 md:grid-cols-6 h-auto">
+        <TabsList className="bg-gray-100 dark:bg-gray-800 flex flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="dados">Dados</TabsTrigger>
           <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
+          <TabsTrigger
+            value="insights"
+            className="flex items-center gap-1.5 text-amber-600 data-[state=active]:text-amber-700"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Insights IA
+          </TabsTrigger>
           <TabsTrigger value="emergencia">Emergência</TabsTrigger>
           <TabsTrigger value="clinico">Clínico</TabsTrigger>
           <TabsTrigger value="lgpd">Consentimentos</TabsTrigger>
@@ -164,6 +173,10 @@ export default function PatientProfile() {
               <PatientEvolutions patientId={patient.id} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="insights" className="mt-6">
+          <PatientInsights patient={patient} />
         </TabsContent>
 
         <TabsContent value="dados" className="mt-6 space-y-6">

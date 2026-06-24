@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-24T03:49:54.047Z",
+  "generatedAt": "2026-06-24T04:04:01.117Z",
   "collections": [
     {
       "name": "users",
@@ -2295,6 +2295,88 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_notif_set_user ON notification_settings (user)"]
+    },
+    {
+      "name": "clinical_insights",
+      "type": "base",
+      "apiRules": {
+        "list": "professional = @request.auth.id || @request.auth.role = 'gestor_saas'",
+        "view": "professional = @request.auth.id || @request.auth.role = 'gestor_saas'",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "patient",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "session_note",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "session_notes"
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "detected_patterns",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "risk_alerts",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "abandoned_topics",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "intervention_suggestion",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_clinical_insights_patient ON clinical_insights (patient)",
+        "CREATE INDEX idx_clinical_insights_session ON clinical_insights (session_note)"
+      ]
     }
   ]
 }
