@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-24T03:34:56.574Z",
+  "generatedAt": "2026-06-24T03:44:07.086Z",
   "collections": [
     {
       "name": "users",
@@ -513,6 +513,12 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "retention_extended_at",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_patients_cpf ON patients (cpf) WHERE cpf != ''"]
@@ -867,9 +873,63 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "session_number",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "session_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "evolution_type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Evolução padrão",
+            "Intervenção em crise",
+            "Reavaliação",
+            "Relatório",
+            "Encaminhamento"
+          ]
+        },
+        {
+          "name": "internal_observations",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["rascunho", "finalizado"]
+        },
+        {
+          "name": "integrity_hash",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "attachments",
+          "type": "file",
+          "required": false,
+          "system": false
         }
       ],
-      "indexes": []
+      "indexes": [
+        "CREATE INDEX `idx_session_notes_patient` ON `session_notes` (patient)",
+        "CREATE INDEX `idx_session_notes_professional` ON `session_notes` (professional)",
+        "CREATE INDEX `idx_session_notes_status` ON `session_notes` (status)"
+      ]
     },
     {
       "name": "secretary_assignments",

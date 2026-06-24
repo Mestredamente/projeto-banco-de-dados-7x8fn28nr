@@ -17,6 +17,7 @@ import {
 import { toast } from '@/components/ui/use-toast'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/hooks/use-auth'
+import { PatientEvolutions } from '@/components/patients/PatientEvolutions'
 
 export default function PatientProfile() {
   const { id } = useParams()
@@ -38,7 +39,59 @@ export default function PatientProfile() {
 
   if (!patient) return <div className="p-8 text-center">Carregando...</div>
 
+  const [showRetentionAlert, setShowRetentionAlert] = useState(false)
+
+  useEffect(() => {
+    if (patient) {
+      pb.send('/backend/v1/audit/view', {
+        method: 'POST',
+        body: JSON.stringify({ record_id: patient.id, table_name: 'patients' }),
+      }).catch(() => {})
+
+      pb.collection('session_notes')
+        .getList(1, 1, { filter: `patient = '${patient.id}'`, sort: '-session_date' })
+        .then((res) => {
+          if (res.items.length > 0) {
+            const lastDate = new Date(res.items[0].session_date || res.items[0].created)
+            const extendedAt = patient.retention_extended_at
+              ? new Date(patient.retention_extended_at)
+              : null
+            const compareDate = extendedAt && extendedAt > lastDate ? extendedAt : lastDate
+            const fiveYearsAgo = new Date()
+            fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5)
+
+            if (compareDate < fiveYearsAgo) {
+              setShowRetentionAlert(true)
+            }
+          }
+        })
+        .catch(() => {})
+    }
+  }, [patient])
+
   const isPsychologist = ['psicologo_autonomo', 'psicologo_vinculado'].includes(user?.role || '')
+
+  const handleRetentionAction = async (action: 'maintain' | 'anonymize' | 'delete') => {
+    try {
+      if (action === 'maintain') {
+        await pb.collection('patients').update(patient.id, {
+          retention_extended_at: new Date().toISOString(),
+        })
+        toast({ title: 'Retenção estendida com sucesso.' })
+      } else if (action === 'anonymize') {
+        await pb.send(`/backend/v1/patients/${patient.id}/anonymize`, { method: 'POST' })
+        toast({ title: 'Paciente anonimizado com sucesso.' })
+        window.location.reload()
+      } else if (action === 'delete') {
+        await pb.collection('patients').delete(patient.id)
+        toast({ title: 'Paciente excluído com sucesso.' })
+        navigate('/patients')
+      }
+      setShowRetentionAlert(false)
+    } catch (error) {
+      toast({ title: 'Erro ao processar ação.', variant: 'destructive' })
+    }
+  }
 
   const handleDeactivate = async () => {
     try {
@@ -93,13 +146,25 @@ export default function PatientProfile() {
       </div>
 
       <Tabs defaultValue="dados" className="w-full">
-        <TabsList className="bg-gray-100 dark:bg-gray-800 grid grid-cols-2 md:grid-cols-5 h-auto">
+        <TabsList className="bg-gray-100 dark:bg-gray-800 grid grid-cols-2 md:grid-cols-6 h-auto">
           <TabsTrigger value="dados">Dados</TabsTrigger>
+          <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
           <TabsTrigger value="emergencia">Emergência</TabsTrigger>
           <TabsTrigger value="clinico">Clínico</TabsTrigger>
           <TabsTrigger value="lgpd">Consentimentos</TabsTrigger>
           {isPsychologist && <TabsTrigger value="observacoes">Observações</TabsTrigger>}
         </TabsList>
+
+        <TabsContent value="prontuario" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Evolução Clínica</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PatientEvolutions patientId={patient.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="dados" className="mt-6 space-y-6">
           <Card>
@@ -275,6 +340,29 @@ export default function PatientProfile() {
           </TabsContent>
         )}
       </Tabs>
+
+      <AlertDialog open={showRetentionAlert} onOpenChange={setShowRetentionAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aviso de Retenção de Dados (CFP 012/2005)</AlertDialogTitle>
+            <AlertDialogDescription>
+              O prontuário de {patient.name} completou 5 anos desde a última evolução. Deseja
+              mantê-lo ativo, anonimizar ou excluir os dados?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <Button variant="outline" onClick={() => handleRetentionAction('maintain')}>
+              Manter ativo
+            </Button>
+            <Button variant="secondary" onClick={() => handleRetentionAction('anonymize')}>
+              Anonimizar dados
+            </Button>
+            <Button variant="destructive" onClick={() => handleRetentionAction('delete')}>
+              Eliminar dados
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

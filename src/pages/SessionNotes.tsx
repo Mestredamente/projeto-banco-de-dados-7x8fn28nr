@@ -40,22 +40,23 @@ export default function SessionNotes() {
                     Paciente: {note.expand?.patient?.name}
                   </CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Data: {new Date(note.created).toLocaleDateString('pt-BR')} • Psi:{' '}
-                    {note.expand?.professional?.name}
+                    Data: {new Date(note.session_date || note.created).toLocaleDateString('pt-BR')}{' '}
+                    • Sessão {note.session_number} • Tipo:{' '}
+                    {note.evolution_type || 'Evolução padrão'}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  {note.is_editable ? (
-                    <span className="flex items-center text-xs text-green-600 font-medium">
-                      <LockOpen className="h-3 w-3 mr-1" /> Editável
+                  {note.status === 'rascunho' || note.is_editable ? (
+                    <span className="flex items-center text-xs text-orange-600 font-medium">
+                      <LockOpen className="h-3 w-3 mr-1" /> Rascunho
                     </span>
                   ) : (
-                    <span className="flex items-center text-xs text-gray-500 font-medium">
-                      <Lock className="h-3 w-3 mr-1" /> Fechado
+                    <span className="flex items-center text-xs text-green-600 font-medium">
+                      <Lock className="h-3 w-3 mr-1" /> Finalizado
                     </span>
                   )}
-                  <Button variant="outline" size="sm">
-                    Visualizar
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`/patients/${note.patient}`}>Ver Paciente</a>
                   </Button>
                 </div>
               </CardHeader>
