@@ -11,9 +11,12 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
 
+type ExperienceLevel = 'iniciante' | 'intermediario' | 'avancado' | null
+
 export function WelcomeTour() {
   const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+  const [level, setLevel] = useState<ExperienceLevel>(null)
   const [step, setStep] = useState(0)
 
   useEffect(() => {
@@ -34,7 +37,7 @@ export function WelcomeTour() {
     }
   }
 
-  const steps = [
+  const stepsIniciante = [
     {
       title: 'Bem-vindo ao Sistema!',
       desc: 'Nós preparamos um ambiente completo para a gestão da sua prática clínica. Vamos conhecer as principais áreas?',
@@ -53,7 +56,83 @@ export function WelcomeTour() {
     },
   ]
 
+  const stepsIntermediario = [
+    {
+      title: 'Bem-vindo de volta à gestão!',
+      desc: 'Nosso sistema é direto ao ponto. Aqui você encontra tudo em um só lugar.',
+    },
+    {
+      title: 'Ações Rápidas & Atalhos',
+      desc: 'Navegue pelo menu lateral para Agenda, Pacientes e Clínicas. Configure seu perfil em Configurações para emitir recibos automaticamente.',
+    },
+  ]
+
+  const stepsAvancado = [
+    {
+      title: 'Boas-vindas!',
+      desc: 'Seu ambiente está pronto. Acesse as Configurações para finalizar seu perfil profissional e financeiro e comece a atender.',
+    },
+  ]
+
+  let currentSteps = stepsIniciante
+  if (level === 'intermediario') currentSteps = stepsIntermediario
+  if (level === 'avancado') currentSteps = stepsAvancado
+
   if (!isOpen) return null
+
+  if (level === null) {
+    return (
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) handleFinish()
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-teal-700">
+              Olá! Queremos te conhecer melhor.
+            </DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              Qual seu nível de experiência com sistemas de gestão clínica?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-4">
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                setLevel('iniciante')
+                setStep(0)
+              }}
+            >
+              🌱 Iniciante (Gostaria de um tour completo)
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                setLevel('intermediario')
+                setStep(0)
+              }}
+            >
+              🚀 Intermediário (Conheço o básico, me mostre os atalhos)
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                setLevel('avancado')
+                setStep(0)
+              }}
+            >
+              ⚡ Avançado (Já sei usar, quero ir direto ao ponto)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog
@@ -64,19 +143,25 @@ export function WelcomeTour() {
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl text-teal-700">{steps[step].title}</DialogTitle>
-          <DialogDescription className="text-base mt-2">{steps[step].desc}</DialogDescription>
+          <DialogTitle className="text-xl text-teal-700">{currentSteps[step].title}</DialogTitle>
+          <DialogDescription className="text-base mt-2">
+            {currentSteps[step].desc}
+          </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-center space-x-2 py-4">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={`h-2 w-2 rounded-full ${i === step ? 'bg-teal-600' : 'bg-gray-200'}`}
-            />
-          ))}
-        </div>
+
+        {currentSteps.length > 1 && (
+          <div className="flex justify-center space-x-2 py-4">
+            {currentSteps.map((_, i) => (
+              <div
+                key={i}
+                className={`h-2 w-2 rounded-full ${i === step ? 'bg-teal-600' : 'bg-gray-200'}`}
+              />
+            ))}
+          </div>
+        )}
+
         <DialogFooter>
-          {step < steps.length - 1 ? (
+          {step < currentSteps.length - 1 ? (
             <Button
               onClick={() => setStep((s) => s + 1)}
               className="bg-teal-600 hover:bg-teal-700 text-white w-full"

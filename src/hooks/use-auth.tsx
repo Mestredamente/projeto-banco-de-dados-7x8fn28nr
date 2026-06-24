@@ -7,6 +7,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (data: any) => Promise<{ error: any }>
   signOut: () => void
+  requestPasswordReset: (email: string) => Promise<{ error: any }>
   loading: boolean
 }
 
@@ -29,17 +30,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(pb.authStore.isValid)
     })
 
+    let refreshInterval: ReturnType<typeof setInterval>
+
     if (pb.authStore.isValid) {
       pb.collection('users')
         .authRefresh()
         .catch(() => pb.authStore.clear())
         .finally(() => setLoading(false))
+
+      refreshInterval = setInterval(
+        () => {
+          if (pb.authStore.isValid) {
+            pb.collection('users')
+              .authRefresh()
+              .catch(() => pb.authStore.clear())
+          }
+        },
+        5 * 60 * 1000,
+      ) // 5 minutes
     } else {
       if (pb.authStore.record) pb.authStore.clear()
       setLoading(false)
     }
+
     return () => {
       unsubscribe()
+      if (refreshInterval) clearInterval(refreshInterval)
     }
   }, [])
 
@@ -57,6 +73,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         terms_accepted_at: data.acceptedTerms ? new Date().toISOString() : null,
         consent_given_at: data.acceptedLgpd ? new Date().toISOString() : null,
         emailVisibility: true,
+        clinic_name: data.clinic_name, // Extra field handled by user_onboarding hook
+        is_active: true,
       })
       await pb.collection('users').authWithPassword(data.email, data.password)
       return { error: null }
@@ -78,6 +96,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     pb.authStore.clear()
   }
 
+  const requestPasswordReset = async (email: string) => {
+    try {
+      await pb.collection('users').requestPasswordReset(email)
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -86,6 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signIn,
         signUp,
         signOut,
+        requestPasswordReset,
         loading,
       }}
     >

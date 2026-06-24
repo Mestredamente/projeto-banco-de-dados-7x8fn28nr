@@ -1,40 +1,45 @@
 onRecordAfterCreateSuccess((e) => {
-  const user = e.record
+  const userId = e.record.id
 
-  // 1. Create trial subscription
-  try {
-    const subsCol = $app.findCollectionByNameOrId('subscriptions')
-    const sub = new Record(subsCol)
-    sub.set('subscriber', user.id)
-    sub.set('status', 'trial')
+  // 1. Create Trial Subscription
+  const subsCollection = $app.findCollectionByNameOrId('subscriptions')
+  const sub = new Record(subsCollection)
+  sub.set('subscriber', userId)
+  sub.set('status', 'trial')
+  const now = new Date()
+  const trialEnds = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+  sub.set('trial_ends_at', trialEnds.toISOString())
+  sub.set('current_period_start', now.toISOString())
+  sub.set('current_period_end', trialEnds.toISOString())
 
-    const now = new Date()
-    sub.set('current_period_start', now.toISOString().replace('T', ' '))
+  // 2. Handle Clinic Administrator creation
+  if (e.record.getString('role') === 'admin_clinica') {
+    const body = e.requestInfo().body || {}
+    const clinicName = body.clinic_name
 
-    const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-    sub.set('trial_ends_at', trialEnd.toISOString().replace('T', ' '))
+    if (clinicName) {
+      // Create Clinic
+      const clinicsCol = $app.findCollectionByNameOrId('clinics')
+      const clinic = new Record(clinicsCol)
+      clinic.set('name', clinicName)
+      clinic.set('is_active', true)
+      $app.saveNoValidate(clinic)
 
-    $app.save(sub)
-  } catch (err) {
-    $app.logger().error('Trial creation failed', 'error', err.message)
+      // Associate user with clinic
+      const cpCol = $app.findCollectionByNameOrId('clinic_professionals')
+      const cp = new Record(cpCol)
+      cp.set('clinic', clinic.id)
+      cp.set('professional', userId)
+      cp.set('relationship_model', 'contratacao')
+      cp.set('is_active', true)
+      $app.saveNoValidate(cp)
+
+      // Attach subscription to clinic as well
+      sub.set('clinic', clinic.id)
+    }
   }
 
-  // 2. Audit Log
-  try {
-    const auditCol = $app.findCollectionByNameOrId('audit_logs')
-    const audit = new Record(auditCol)
-    audit.set('actor', user.id)
-    audit.set('action', 'account_created')
-    audit.set('table_name', 'users')
-    audit.set('record_id', user.id)
-    audit.set('new_data', { trial_started: true })
-    $app.save(audit)
-  } catch (err) {
-    $app.logger().error('Audit log failed', 'error', err.message)
-  }
+  $app.saveNoValidate(sub)
 
-  // 3. Welcome Email
-  $app.logger().info(`Sending welcome email to ${user.email()} with access instructions.`)
-
-  e.next()
+  return e.next()
 }, 'users')

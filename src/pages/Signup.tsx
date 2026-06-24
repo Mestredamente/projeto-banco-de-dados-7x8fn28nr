@@ -16,16 +16,35 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { maskCPF, maskCRP, maskPhone } from '@/lib/utils'
 
+function validateCPF(cpf: string) {
+  cpf = cpf.replace(/[^\d]+/g, '')
+  if (cpf.length !== 11 || !!cpf.match(/(\d)\1{10}/)) return false
+  let sum = 0,
+    rest
+  for (let i = 1; i <= 9; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i)
+  rest = (sum * 10) % 11
+  if (rest === 10 || rest === 11) rest = 0
+  if (rest !== parseInt(cpf.substring(9, 10))) return false
+  sum = 0
+  for (let i = 1; i <= 10; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i)
+  rest = (sum * 10) % 11
+  if (rest === 10 || rest === 11) rest = 0
+  if (rest !== parseInt(cpf.substring(10, 11))) return false
+  return true
+}
+
 export default function Signup() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
 
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [clinicName, setClinicName] = useState('')
+
   const [form, setForm] = useState({
     email: '',
     password: '',
-    role: 'psicologo_autonomo',
     name: '',
     cpf: '',
     crp: '',
@@ -49,6 +68,29 @@ export default function Signup() {
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault()
+    if (step === 2) {
+      if (!validateCPF(form.cpf)) {
+        toast({ title: 'Atenção', description: 'CPF inválido.', variant: 'destructive' })
+        return
+      }
+      const crpValid = /^\d{2}\/\d{5,6}$/.test(form.crp)
+      if (!crpValid) {
+        toast({
+          title: 'Atenção',
+          description: 'CRP deve estar no formato XX/XXXXX.',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (isAdmin && !clinicName.trim()) {
+        toast({
+          title: 'Atenção',
+          description: 'Nome da Clínica é obrigatório.',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
     setStep((s) => s + 1)
   }
 
@@ -65,7 +107,11 @@ export default function Signup() {
       return
     }
     setLoading(true)
-    const { error } = await signUp(form)
+    const { error } = await signUp({
+      ...form,
+      role: isAdmin ? 'admin_clinica' : 'psicologo_autonomo',
+      clinic_name: isAdmin ? clinicName : undefined,
+    })
     setLoading(false)
 
     if (error) {
@@ -159,6 +205,28 @@ export default function Signup() {
                     onChange={updateForm}
                     placeholder="(00) 00000-0000"
                   />
+                </div>
+
+                <div className="pt-4 border-t space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isAdmin"
+                      checked={isAdmin}
+                      onCheckedChange={(c) => setIsAdmin(c as boolean)}
+                    />
+                    <Label htmlFor="isAdmin">Sou administrador de clínica</Label>
+                  </div>
+                  {isAdmin && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label htmlFor="clinicName">Nome da Clínica</Label>
+                      <Input
+                        id="clinicName"
+                        value={clinicName}
+                        onChange={(e) => setClinicName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
