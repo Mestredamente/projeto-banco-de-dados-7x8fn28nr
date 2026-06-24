@@ -31,6 +31,10 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import ClinicAdmin from './pages/ClinicAdmin'
 import Secretaries from './pages/Secretaries'
+import Referrals from './pages/Referrals'
+import Supervisions from './pages/Supervisions'
+import Academy from './pages/Academy'
+import AcademyCourse from './pages/AcademyCourse'
 import NotFound from './pages/NotFound'
 import { AuthProvider } from './hooks/use-auth'
 
@@ -63,6 +67,10 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/secretaries" element={<Secretaries />} />
             <Route path="/clinic-admin" element={<ClinicAdmin />} />
+            <Route path="/referrals" element={<Referrals />} />
+            <Route path="/supervisions" element={<Supervisions />} />
+            <Route path="/academy" element={<Academy />} />
+            <Route path="/academy/:id" element={<AcademyCourse />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

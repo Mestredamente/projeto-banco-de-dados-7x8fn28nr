@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { PatientEvolutions } from '@/components/patients/PatientEvolutions'
 import { PatientInsights } from '@/components/patients/PatientInsights'
 import { PatientCrisisInterventions } from '@/components/patients/PatientCrisisInterventions'
+import { PatientReferralsTab, ReferralDialog } from '@/components/patients/PatientReferralsTab'
 
 export default function PatientProfile() {
   const { id } = useParams()
@@ -72,6 +73,8 @@ export default function PatientProfile() {
 
   const isPsychologist = ['psicologo_autonomo', 'psicologo_vinculado'].includes(user?.role || '')
 
+  const [showReferralDialog, setShowReferralDialog] = useState(false)
+
   if (!patient) return <div className="p-8 text-center">Carregando...</div>
 
   const handleRetentionAction = async (action: 'maintain' | 'anonymize' | 'delete') => {
@@ -118,7 +121,12 @@ export default function PatientProfile() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{patient.name}</h1>
           <p className="text-gray-500 mt-1">Paciente desde {patientSince}</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
+          {isPsychologist && (
+            <Button variant="secondary" onClick={() => setShowReferralDialog(true)}>
+              Encaminhar Paciente
+            </Button>
+          )}
           <Button variant="outline" asChild>
             <Link to={`/patients/${patient.id}/edit`}>Editar Dados</Link>
           </Button>
@@ -171,6 +179,7 @@ export default function PatientProfile() {
               >
                 Crises
               </TabsTrigger>
+              <TabsTrigger value="encaminhamentos">Encaminhamentos</TabsTrigger>
             </>
           )}
         </TabsList>
@@ -366,9 +375,20 @@ export default function PatientProfile() {
             <TabsContent value="crises" className="mt-6">
               <PatientCrisisInterventions patientId={patient.id} />
             </TabsContent>
+            <TabsContent value="encaminhamentos" className="mt-6">
+              <PatientReferralsTab patientId={patient.id} />
+            </TabsContent>
           </>
         )}
       </Tabs>
+
+      {isPsychologist && (
+        <ReferralDialog
+          patient={patient}
+          open={showReferralDialog}
+          onOpenChange={setShowReferralDialog}
+        />
+      )}
 
       <AlertDialog open={showRetentionAlert} onOpenChange={setShowRetentionAlert}>
         <AlertDialogContent>

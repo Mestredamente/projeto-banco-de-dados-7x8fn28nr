@@ -14,7 +14,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { usePatient } from '@/hooks/use-patient'
 import { Button } from '@/components/ui/button'
-import { HeartPulse } from 'lucide-react'
+import { HeartPulse, BookOpen, GraduationCap, ArrowRightLeft } from 'lucide-react'
 
 const NAV_ITEMS_PSICO = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -24,6 +24,9 @@ const NAV_ITEMS_PSICO = [
   { name: 'Financeiro', path: '/financeiro', icon: DollarSign },
   { name: 'Prontuários', path: '/notes', icon: FileText },
   { name: 'Relatórios', path: '/reports', icon: BarChart2 },
+  { name: 'Syntra Academy', path: '/academy', icon: BookOpen },
+  { name: 'Supervisões', path: '/supervisions', icon: GraduationCap },
+  { name: 'Encaminhamentos', path: '/referrals', icon: ArrowRightLeft },
   { name: 'Configurações', path: '/settings', icon: Settings },
 ]
 
