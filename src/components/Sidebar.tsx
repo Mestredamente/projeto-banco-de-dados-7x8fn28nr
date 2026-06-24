@@ -33,6 +33,7 @@ export function Sidebar() {
   const { patient } = usePatient()
 
   const isPatient = user?.role === 'paciente'
+  const isSecretary = user?.role === 'secretaria'
   const perms = patient?.portal_permissions || { diary: true, financial: true, evolutions: true }
 
   const NAV_ITEMS = isPatient
@@ -50,7 +51,9 @@ export function Sidebar() {
           : []),
         { name: 'Configurações', path: '/settings', icon: Settings },
       ]
-    : NAV_ITEMS_PSICO
+    : isSecretary
+      ? NAV_ITEMS_SEC
+      : NAV_ITEMS_PSICO
 
   return (
     <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-full shrink-0 shadow-sm">

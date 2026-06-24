@@ -3,7 +3,15 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Layout from './components/Layout'
-import Index from './pages/Index'
+import IndexBase from './pages/Index'
+import SecretaryDashboard from './components/dashboard/SecretaryDashboard'
+import { useAuth } from './hooks/use-auth'
+
+const Index = () => {
+  const { user } = useAuth()
+  if (user?.role === 'secretaria') return <SecretaryDashboard />
+  return <IndexBase />
+}
 import PatientDashboard from './pages/patient/PatientDashboard'
 import PatientAgenda from './pages/patient/PatientAgenda'
 import PatientDiary from './pages/patient/PatientDiary'
@@ -22,6 +30,7 @@ import SessionNotes from './pages/SessionNotes'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import ClinicAdmin from './pages/ClinicAdmin'
+import Secretaries from './pages/Secretaries'
 import NotFound from './pages/NotFound'
 import { AuthProvider } from './hooks/use-auth'
 
@@ -52,6 +61,7 @@ const App = () => (
             <Route path="/notes" element={<SessionNotes />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/secretaries" element={<Secretaries />} />
             <Route path="/clinic-admin" element={<ClinicAdmin />} />
           </Route>
           <Route path="*" element={<NotFound />} />
