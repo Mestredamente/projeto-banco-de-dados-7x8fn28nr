@@ -20,9 +20,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
+import { format } from 'date-fns'
 
 const APPROACHES = ['TCC', 'Psicanálise', 'Gestalt', 'Humanista', 'Comportamental', 'Outra']
 const BANKS = ['Banco do Brasil', 'Itaú', 'Bradesco', 'Santander', 'Nubank', 'Caixa', 'Outro']
@@ -36,6 +48,25 @@ const DAYS = [
   { key: 'sabado', label: 'Sábado' },
   { key: 'domingo', label: 'Domingo' },
 ]
+
+const DEFAULT_TRIGGERS = {
+  lembrete: true,
+  confirmacao: true,
+  falta: true,
+  cobranca_sessao: true,
+  cobranca_mensal: true,
+  atraso: false,
+  feriado: false,
+  reagendamento: true,
+}
+
+const DEFAULT_TEMPLATES = {
+  lembrete:
+    'Olá [PACIENTE], sua sessão com [PSICÓLOGO] é amanhã às [HORÁRIO]. Confirme aqui: [LINK]',
+  confirmacao: 'Sessão confirmada para [DATA] às [HORÁRIO]. Até lá!',
+  falta: 'Você faltou à sessão de [DATA] às [HORÁRIO]. Para reagendar, acesse o portal.',
+  cobranca: 'Sessão de [DATA] no valor de R$ [VALOR]. Pagamento via [METODO]. Chave: [PIX]',
+}
 
 export default function Settings() {
   const { user } = useAuth()
@@ -62,6 +93,15 @@ export default function Settings() {
     Record<string, { active: boolean; start: string; end: string }>
   >({})
 
+  const [notificationSettings, setNotificationSettings] = useState({
+    id: '',
+    triggers: DEFAULT_TRIGGERS,
+    reminder_time: '10:00',
+    templates: DEFAULT_TEMPLATES,
+  })
+  const [pendingBillings, setPendingBillings] = useState<any[]>([])
+  const [notificationLogs, setNotificationLogs] = useState<any[]>([])
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -87,8 +127,42 @@ export default function Settings() {
         parsedSch[d.key] = sch[d.key] || { active: false, start: '08:00', end: '18:00' }
       })
       setSchedule(parsedSch)
+
+      loadNotificationData()
     }
   }, [user])
+
+  const loadNotificationData = async () => {
+    try {
+      const res = await pb.collection('notification_settings').getFirstListItem(`user="${user.id}"`)
+      setNotificationSettings({
+        id: res.id,
+        triggers: { ...DEFAULT_TRIGGERS, ...(res.triggers || {}) },
+        reminder_time: res.reminder_time || '10:00',
+        templates: { ...DEFAULT_TEMPLATES, ...(res.templates || {}) },
+      })
+    } catch (err) {
+      // Usar os defaults
+    }
+
+    try {
+      const billings = await pb.collection('financial_records').getList(1, 10, {
+        filter: `status="pendente" && professional="${user.id}"`,
+        expand: 'patient',
+        sort: '-created',
+      })
+      setPendingBillings(billings.items)
+
+      const logs = await pb.collection('notifications').getList(1, 10, {
+        filter: `profile="${user.id}"`,
+        expand: 'patient',
+        sort: '-created',
+      })
+      setNotificationLogs(logs.items)
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((p) => ({ ...p, [e.target.name]: e.target.value }))
@@ -122,6 +196,19 @@ export default function Settings() {
     setSchedule(newSch)
   }
 
+  const handleSendBilling = async (recordId: string) => {
+    try {
+      await pb.send('/backend/v1/notifications/send-billing', {
+        method: 'POST',
+        body: JSON.stringify({ record_id: recordId }),
+      })
+      toast({ title: 'Sucesso', description: 'Notificação de cobrança enviada.' })
+      loadNotificationData()
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Falha ao enviar notificação.', variant: 'destructive' })
+    }
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -146,11 +233,26 @@ export default function Settings() {
         },
       }
       await pb.collection('users').update(user.id, payload)
-      toast({ title: 'Sucesso', description: 'Perfil atualizado com sucesso.' })
+
+      const nsPayload = {
+        user: user.id,
+        triggers: notificationSettings.triggers,
+        reminder_time: notificationSettings.reminder_time,
+        templates: notificationSettings.templates,
+      }
+
+      if (notificationSettings.id) {
+        await pb.collection('notification_settings').update(notificationSettings.id, nsPayload)
+      } else {
+        const created = await pb.collection('notification_settings').create(nsPayload)
+        setNotificationSettings((prev) => ({ ...prev, id: created.id }))
+      }
+
+      toast({ title: 'Sucesso', description: 'Configurações atualizadas com sucesso.' })
     } catch (error) {
       toast({
         title: 'Erro',
-        description: 'Não foi possível atualizar o perfil.',
+        description: 'Não foi possível atualizar as configurações.',
         variant: 'destructive',
       })
     } finally {
@@ -182,9 +284,7 @@ export default function Settings() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Configurações</h1>
-        <p className="text-gray-500 mt-1">
-          Gerencie seu perfil profissional e informações da conta.
-        </p>
+        <p className="text-gray-500 mt-1">Gerencie seu perfil profissional, conta e automações.</p>
       </div>
 
       <Tabs defaultValue="geral" className="max-w-4xl">
@@ -192,6 +292,7 @@ export default function Settings() {
           <TabsTrigger value="geral">Geral</TabsTrigger>
           <TabsTrigger value="profissional">Profissional</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
           <TabsTrigger value="assinatura">Assinatura</TabsTrigger>
         </TabsList>
 
@@ -421,6 +522,181 @@ export default function Settings() {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notificacoes">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações de Notificações</CardTitle>
+                <CardDescription>
+                  Gerencie gatilhos, horários e templates das suas comunicações automáticas.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Gatilhos de Envio</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.keys(DEFAULT_TRIGGERS).map((trigger) => (
+                      <div
+                        key={trigger}
+                        className="flex items-center justify-between border p-3 rounded-md border-gray-200 dark:border-gray-800"
+                      >
+                        <span className="capitalize text-sm font-medium">
+                          {trigger.replace('_', ' ')}
+                        </span>
+                        <Switch
+                          checked={
+                            notificationSettings.triggers[trigger as keyof typeof DEFAULT_TRIGGERS]
+                          }
+                          onCheckedChange={(c) =>
+                            setNotificationSettings((p) => ({
+                              ...p,
+                              triggers: { ...p.triggers, [trigger]: c },
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Horário padrão para Lembretes Automáticos</Label>
+                  <Input
+                    type="time"
+                    value={notificationSettings.reminder_time}
+                    onChange={(e) =>
+                      setNotificationSettings((p) => ({ ...p, reminder_time: e.target.value }))
+                    }
+                    className="w-32"
+                  />
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <h3 className="text-lg font-medium">Templates de Mensagem</h3>
+                  <p className="text-sm text-gray-500">
+                    Variáveis disponíveis: [PACIENTE], [PSICÓLOGO], [HORÁRIO], [DATA], [LINK],
+                    [VALOR], [METODO], [PIX]
+                  </p>
+
+                  {Object.keys(DEFAULT_TEMPLATES).map((tmpl) => (
+                    <div key={tmpl} className="space-y-2">
+                      <Label className="capitalize">{tmpl}</Label>
+                      <Textarea
+                        value={
+                          notificationSettings.templates[tmpl as keyof typeof DEFAULT_TEMPLATES]
+                        }
+                        onChange={(e) =>
+                          setNotificationSettings((p) => ({
+                            ...p,
+                            templates: { ...p.templates, [tmpl]: e.target.value },
+                          }))
+                        }
+                        rows={2}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Fluxo de Aprovação de Cobrança</CardTitle>
+                <CardDescription>
+                  Faturas pendentes que exigem sua aprovação para envio.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingBillings.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-4">
+                          Nenhuma cobrança pendente.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pendingBillings.map((b) => (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-medium">{b.expand?.patient?.name}</TableCell>
+                          <TableCell>
+                            {b.due_date ? format(new Date(b.due_date), 'dd/MM/yyyy') : '-'}
+                          </TableCell>
+                          <TableCell>R$ {b.value?.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              type="button"
+                              onClick={() => handleSendBilling(b.id)}
+                              className="bg-teal-600 hover:bg-teal-700"
+                            >
+                              Aprovar Envio
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Logs de Notificações</CardTitle>
+                <CardDescription>
+                  Últimas notificações enviadas pelo sistema para seus pacientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {notificationLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-4">
+                          Nenhum log encontrado.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      notificationLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell>{format(new Date(log.created), 'dd/MM/yyyy HH:mm')}</TableCell>
+                          <TableCell>{log.expand?.patient?.name}</TableCell>
+                          <TableCell className="capitalize">{log.type.replace('_', ' ')}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={log.status === 'Erro' ? 'destructive' : 'default'}
+                              className={
+                                log.status === 'Entregue' ? 'bg-green-100 text-green-800' : ''
+                              }
+                            >
+                              {log.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

@@ -53,12 +53,10 @@ export default function Agenda() {
       })
       if (toCancel.length > 0) {
         toCancel.forEach(async (a) => {
-          await pb
-            .collection('appointments')
-            .update(a.id, {
-              status: 'cancelado',
-              notes: a.notes + ' [Cancelamento Automático 24h]',
-            })
+          await pb.collection('appointments').update(a.id, {
+            status: 'cancelado',
+            notes: a.notes + ' [Cancelamento Automático 24h]',
+          })
         })
         toast.info(
           `${toCancel.length} sessões canceladas automaticamente (regra de 24h sem confirmação).`,
