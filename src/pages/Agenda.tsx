@@ -1,12 +1,41 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import pb from '@/lib/pocketbase/client'
-import useRealtime from '@/hooks/use-realtime'
+import {
+  format,
+  startOfWeek,
+  addWeeks,
+  subWeeks,
+  addDays,
+  subDays,
+  addMonths,
+  subMonths,
+} from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
+import { WaitlistPanel } from '@/components/agenda/WaitlistPanel'
+import { AgendaLegend } from '@/components/agenda/AgendaLegend'
+import { CalendarWeekly } from '@/components/agenda/CalendarWeekly'
+import { CalendarDaily } from '@/components/agenda/CalendarDaily'
+import { CalendarMonthly } from '@/components/agenda/CalendarMonthly'
+import { AppointmentFormModal } from '@/components/agenda/AppointmentFormModal'
+import { fetchHolidays } from '@/lib/agenda-utils'
+import { toast } from 'sonner'
 
 export default function Agenda() {
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [view, setView] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
   const [appointments, setAppointments] = useState<any[]>([])
+  const [holidays, setHolidays] = useState<any[]>([])
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const loadData = async () => {
     try {
@@ -14,6 +43,27 @@ export default function Agenda() {
         .collection('appointments')
         .getFullList({ expand: 'patient', sort: '-scheduled_date' })
       setAppointments(records)
+
+      // Auto cancel 24h unconfirmed
+      const toCancel = records.filter((a) => {
+        if (a.status !== 'agendado') return false
+        const d = new Date(`${a.scheduled_date.split(' ')[0]}T${a.start_time}:00`)
+        const diff = (d.getTime() - new Date().getTime()) / (1000 * 60 * 60)
+        return diff > 0 && diff < 24 && !a.patient_confirmed_at && a.session_type !== 'bloqueado'
+      })
+      if (toCancel.length > 0) {
+        toCancel.forEach(async (a) => {
+          await pb
+            .collection('appointments')
+            .update(a.id, {
+              status: 'cancelado',
+              notes: a.notes + ' [Cancelamento Automático 24h]',
+            })
+        })
+        toast.info(
+          `${toCancel.length} sessões canceladas automaticamente (regra de 24h sem confirmação).`,
+        )
+      }
     } catch (e) {
       console.error(e)
     }
@@ -21,82 +71,125 @@ export default function Agenda() {
 
   useEffect(() => {
     loadData()
-  }, [])
-  useRealtime('appointments', () => {
-    loadData()
-  })
+    fetchHolidays(currentDate.getFullYear()).then(setHolidays)
+  }, [currentDate.getFullYear()])
+
+  useRealtime('appointments', () => loadData())
+
+  const navigate = (direction: 'prev' | 'next') => {
+    if (view === 'daily')
+      setCurrentDate(direction === 'next' ? addDays(currentDate, 1) : subDays(currentDate, 1))
+    else if (view === 'weekly')
+      setCurrentDate(direction === 'next' ? addWeeks(currentDate, 1) : subWeeks(currentDate, 1))
+    else
+      setCurrentDate(direction === 'next' ? addMonths(currentDate, 1) : subMonths(currentDate, 1))
+  }
+
+  const handleSlotClick = (dateStr: string, timeStr: string) => {
+    setIsModalOpen(true)
+  }
+
+  const handleAppointmentClick = (app: any) => {
+    toast.info(`Sessão selecionada: ${app.expand?.patient?.name || 'Bloqueio'}`)
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col space-y-4 animate-fade-in pb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Agenda</h1>
-          <p className="text-gray-500 mt-1">Gerencie seus compromissos e consultas.</p>
+          <h1 className="text-3xl font-bold text-foreground">Agenda</h1>
+          <p className="text-muted-foreground mt-1">Gerencie suas sessões e horários.</p>
         </div>
-        <Button className="bg-teal-600 hover:bg-teal-700 text-white">
-          <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => toast.info('Sincronização com Google Calendar iniciada (Simulação)')}
+          >
+            <CalendarIcon className="w-4 h-4" /> Sync Google
+          </Button>
+          <Button
+            className="bg-teal-600 hover:bg-teal-700 text-white"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Nova Sessão
+          </Button>
+        </div>
       </div>
 
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
-          <div className="divide-y divide-gray-200 dark:divide-gray-800">
-            {appointments.length === 0 ? (
-              <p className="p-8 text-center text-gray-500">Nenhum agendamento encontrado.</p>
-            ) : (
-              appointments.map((apt) => (
-                <div
-                  key={apt.id}
-                  className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                >
-                  <div className="flex gap-4 items-center">
-                    <div className="text-center min-w-[80px]">
-                      <div className="text-sm font-semibold text-teal-600">
-                        {new Date(apt.scheduled_date).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: 'short',
-                        })}
-                      </div>
-                      <div className="text-xl font-bold">
-                        {new Date(apt.scheduled_date).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </div>
-                    </div>
-                    <div className="border-l-2 border-gray-200 pl-4">
-                      <p className="font-semibold text-lg">
-                        {apt.expand?.patient?.name || 'Paciente não encontrado'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {apt.session_type || 'Sessão regular'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                        apt.status === 'agendado'
-                          ? 'bg-blue-100 text-blue-800'
-                          : apt.status === 'realizado'
-                            ? 'bg-green-100 text-green-800'
-                            : apt.status === 'cancelado'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {apt.status}
-                    </span>
-                    <Button variant="outline" size="sm">
-                      Detalhes
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+        <div className="w-full lg:w-64 flex flex-col gap-4">
+          <div className="bg-card p-4 rounded-md border shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
+                Hoje
+              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={() => navigate('prev')}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => navigate('next')}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="text-center font-bold capitalize text-lg">
+              {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
+            </div>
+            <Select value={view} onValueChange={(v: any) => setView(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Visualização Diária</SelectItem>
+                <SelectItem value="weekly">Visualização Semanal</SelectItem>
+                <SelectItem value="monthly">Visualização Mensal</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="flex-1 min-h-[200px]">
+            <WaitlistPanel />
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col min-h-[500px] overflow-hidden gap-4">
+          <AgendaLegend />
+
+          {view === 'daily' && (
+            <CalendarDaily
+              date={currentDate}
+              appointments={appointments}
+              onClickSlot={handleSlotClick}
+              onClickAppointment={handleAppointmentClick}
+            />
+          )}
+          {view === 'weekly' && (
+            <CalendarWeekly
+              start={startOfWeek(currentDate)}
+              appointments={appointments}
+              onClickSlot={handleSlotClick}
+              onClickAppointment={handleAppointmentClick}
+            />
+          )}
+          {view === 'monthly' && (
+            <CalendarMonthly
+              date={currentDate}
+              appointments={appointments}
+              onClickSlot={handleSlotClick}
+              onClickAppointment={handleAppointmentClick}
+            />
+          )}
+        </div>
+      </div>
+
+      <AppointmentFormModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onSuccess={loadData}
+        holidays={holidays}
+        appointments={appointments}
+      />
     </div>
   )
 }

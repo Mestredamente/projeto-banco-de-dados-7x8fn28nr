@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-24T03:16:56.112Z",
+  "generatedAt": "2026-06-24T03:26:26.605Z",
   "collections": [
     {
       "name": "users",
@@ -2105,6 +2105,55 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "waitlist",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && professional = @request.auth.id",
+        "view": "@request.auth.id != '' && professional = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && professional = @request.auth.id",
+        "delete": "@request.auth.id != '' && professional = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "patient",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["novos_pacientes", "reagendamento"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_waitlist_professional ON waitlist (professional)"]
     }
   ]
 }
