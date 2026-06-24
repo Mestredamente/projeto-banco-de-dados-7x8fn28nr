@@ -21,6 +21,7 @@ import Financial from './pages/Financial'
 import SessionNotes from './pages/SessionNotes'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import ClinicAdmin from './pages/ClinicAdmin'
 import NotFound from './pages/NotFound'
 import { AuthProvider } from './hooks/use-auth'
 
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/notes" element={<SessionNotes />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/clinic-admin" element={<ClinicAdmin />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -16,22 +16,16 @@ export function ClinicalReports({ startDate, endDate, patientId }: any) {
     async function load() {
       try {
         const [notes, diaries, responses] = await Promise.all([
-          pb
-            .collection('session_notes')
-            .getFullList({
-              filter: `patient = '${patientId}' && created >= '${startDate}' && created <= '${endDate}'`,
-            }),
-          pb
-            .collection('diary_entries')
-            .getFullList({
-              filter: `patient = '${patientId}' && created >= '${startDate}' && created <= '${endDate}'`,
-            }),
-          pb
-            .collection('questionnaire_responses')
-            .getFullList({
-              filter: `assignment.patient = '${patientId}' && created >= '${startDate}' && created <= '${endDate}'`,
-              expand: 'assignment.questionnaire',
-            }),
+          pb.collection('session_notes').getFullList({
+            filter: `patient = '${patientId}' && created >= '${startDate}' && created <= '${endDate}'`,
+          }),
+          pb.collection('diary_entries').getFullList({
+            filter: `patient = '${patientId}' && created >= '${startDate}' && created <= '${endDate}'`,
+          }),
+          pb.collection('questionnaire_responses').getFullList({
+            filter: `assignment.patient = '${patientId}' && created >= '${startDate}' && created <= '${endDate}'`,
+            expand: 'assignment.questionnaire',
+          }),
         ])
 
         const combined = [

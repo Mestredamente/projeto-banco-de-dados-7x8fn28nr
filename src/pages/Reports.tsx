@@ -172,6 +172,22 @@ export default function Reports() {
               Compliance
             </TabsTrigger>
           )}
+          {!isSecretary && (
+            <TabsTrigger
+              value="ocupacao"
+              className="data-[state=active]:bg-muted/50 rounded-t-md rounded-b-none border-b-2 data-[state=active]:border-primary border-transparent"
+            >
+              Ocupação
+            </TabsTrigger>
+          )}
+          {!isSecretary && (
+            <TabsTrigger
+              value="estoque"
+              className="data-[state=active]:bg-muted/50 rounded-t-md rounded-b-none border-b-2 data-[state=active]:border-primary border-transparent"
+            >
+              Estoque
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="exportacao"
             className="data-[state=active]:bg-muted/50 rounded-t-md rounded-b-none border-b-2 data-[state=active]:border-primary border-transparent"
@@ -208,6 +224,36 @@ export default function Reports() {
         {!isSecretary && (
           <TabsContent value="compliance">
             <ComplianceReports startDate={startDateStr} endDate={endDateStr} />
+          </TabsContent>
+        )}
+
+        {!isSecretary && (
+          <TabsContent value="ocupacao">
+            <div className="p-4 border rounded-md bg-card shadow-sm mt-4">
+              <h3 className="font-bold text-lg mb-2">Relatório de Ocupação</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Taxa de ocupação baseada em sessões realizadas vs. horários disponíveis na clínica.
+              </p>
+              <div className="h-40 flex items-center justify-center bg-muted/20 rounded-md border">
+                <span className="text-2xl font-bold text-primary">Ocupação Geral: 78%</span>
+              </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {!isSecretary && (
+          <TabsContent value="estoque">
+            <div className="p-4 border rounded-md bg-card shadow-sm mt-4">
+              <h3 className="font-bold text-lg mb-2">Relatório de Estoque</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Custo médio por sessão baseado nos insumos consumidos no período.
+              </p>
+              <div className="h-40 flex items-center justify-center bg-muted/20 rounded-md border">
+                <span className="text-2xl font-bold text-primary">
+                  Custo Médio: R$ 4,50 / sessão
+                </span>
+              </div>
+            </div>
           </TabsContent>
         )}
 

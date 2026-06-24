@@ -37,12 +37,24 @@ export default function Agenda() {
   const [holidays, setHolidays] = useState<any[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
 
+  const [selectedProf, setSelectedProf] = useState<string>('all')
+  const [professionals, setProfessionals] = useState<any[]>([])
+
   const loadData = async () => {
     try {
+      let filter = ''
+      if (selectedProf !== 'all') {
+        filter = `professional="${selectedProf}"`
+      }
       const records = await pb
         .collection('appointments')
-        .getFullList({ expand: 'patient', sort: '-scheduled_date' })
+        .getFullList({ filter, expand: 'patient', sort: '-scheduled_date' })
       setAppointments(records)
+
+      const profs = await pb
+        .collection('users')
+        .getFullList({ filter: "role != 'paciente' && role != 'secretaria'" })
+      setProfessionals(profs)
 
       // Auto cancel 24h unconfirmed
       const toCancel = records.filter((a) => {
@@ -70,7 +82,7 @@ export default function Agenda() {
   useEffect(() => {
     loadData()
     fetchHolidays(currentDate.getFullYear()).then(setHolidays)
-  }, [currentDate.getFullYear()])
+  }, [currentDate.getFullYear(), selectedProf])
 
   useRealtime('appointments', () => loadData())
 
@@ -99,6 +111,19 @@ export default function Agenda() {
           <p className="text-muted-foreground mt-1">Gerencie suas sessões e horários.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Select value={selectedProf} onValueChange={setSelectedProf}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Profissional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Profissionais</SelectItem>
+              {professionals.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             className="gap-2"
