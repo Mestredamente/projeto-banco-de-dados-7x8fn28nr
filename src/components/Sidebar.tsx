@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   DollarSign,
+  BarChart2,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { usePatient } from '@/hooks/use-patient'
@@ -22,6 +23,7 @@ const NAV_ITEMS_PSICO = [
   { name: 'Clínicas', path: '/clinics', icon: Building2 },
   { name: 'Financeiro', path: '/financeiro', icon: DollarSign },
   { name: 'Prontuários', path: '/notes', icon: FileText },
+  { name: 'Relatórios', path: '/reports', icon: BarChart2 },
   { name: 'Configurações', path: '/settings', icon: Settings },
 ]
 
