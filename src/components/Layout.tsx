@@ -23,9 +23,6 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden font-sans">
-      <div className="bg-red-500 text-white text-center py-2 px-4 font-bold text-sm shrink-0 flex items-center justify-center gap-2 z-50 shadow-sm">
-        <span>🆘 Se estiver em crise, ligue CVV 188</span>
-      </div>
       <div className="flex flex-1 overflow-hidden min-h-0">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
