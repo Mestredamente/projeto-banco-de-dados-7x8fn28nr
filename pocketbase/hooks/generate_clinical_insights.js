@@ -14,14 +14,12 @@ onRecordAfterCreateSuccess((e) => {
     } catch (_) {}
 
     const dob = patient.getString('date_of_birth')
-    let age = 'desconhecida'
+    let age = 'unknown'
     if (dob) {
       const birthDate = new Date(dob)
-      const ageDiffMs = Date.now() - birthDate.getTime()
-      const ageDate = new Date(ageDiffMs)
-      age = Math.abs(ageDate.getUTCFullYear() - 1970).toString()
+      age = Math.abs(new Date(Date.now() - birthDate.getTime()).getUTCFullYear() - 1970).toString()
     }
-    const gender = patient.getString('gender') || 'não informado'
+    const gender = patient.getString('gender') || 'unknown'
 
     let evolsText = ''
     try {
@@ -29,11 +27,14 @@ onRecordAfterCreateSuccess((e) => {
         'session_notes',
         `patient = '${patientId}' && status = 'finalizado'`,
         '-session_date',
-        5,
+        20,
         0,
       )
       evolsText = evols
-        .map((ev) => `Data: ${ev.getString('session_date')}\nConteúdo: ${ev.getString('content')}`)
+        .map(
+          (ev, i) =>
+            `Note ${evols.length - i} (Date: ${ev.getString('session_date')}): ${ev.getString('content')}`,
+        )
         .join('\n\n')
     } catch (_) {}
 
@@ -43,35 +44,48 @@ onRecordAfterCreateSuccess((e) => {
         'diary_entries',
         `patient = '${patientId}' && type = 'sentimentos' && is_visible_to_professional = true`,
         '-entry_date',
-        10,
+        20,
         0,
       )
       diariesText = diaries
         .map(
           (d) =>
-            `Data: ${d.getString('entry_date')}\nHumor: ${d.getString('mood')} (Nota: ${d.getInt('mood_score')})\nConteúdo: ${d.getString('content')}`,
+            `Diary (Date: ${d.getString('entry_date')}): Mood: ${d.getString('mood')} (Score: ${d.getInt('mood_score')}). Content: ${d.getString('content')}`,
         )
         .join('\n\n')
     } catch (_) {}
 
-    const prompt = `Você é um assistente clínico de IA.
-Analise as notas da sessão e os diários e forneça insights estritamente em formato JSON.
-Dados anonimizados: Idade: ${age}, Gênero: ${gender}.
+    const prompt = `You are a clinical AI assistant. Analyze the session notes and diary entries below.
+Patient demographic (anonymized): Age: ${age}, Gender: ${gender}.
 
-Histórico Recente de Evoluções:
+Instructions:
+1. Extract clinical patterns and state their frequency (e.g., "3 consecutive sessions").
+2. Check for abandoned topics (topics mentioned in older notes but not in recent ones).
+3. Correlate diary entries with session notes (e.g., discrepancies in reported mood vs clinical note).
+4. Evaluate risk alerts. If there is a critical risk or mood drop, set level to "critical". If stable, set to "stable".
+5. Provide an intervention suggestion based on evidence.
+
+IMPORTANT: The response MUST be EXACTLY the following JSON format and translated to Brazilian Portuguese (PT-BR). Do NOT include any markdown formatting like \`\`\`json.
+{
+  "summary": "Brief clinical summary and diary correlation in 2 to 3 sentences.",
+  "detected_patterns": [
+    {"pattern": "description", "frequency": "frequency description"}
+  ],
+  "risk_alerts": [
+    {"alert": "description", "level": "critical" | "stable"}
+  ],
+  "abandoned_topics": [
+    {"topic": "description", "time_since_last_mention": "e.g., 30 days"}
+  ],
+  "intervention_suggestion": "suggestion"
+}
+
+Session Notes:
 ${evolsText}
 
-Diário de Sentimentos Recentes:
+Diary Entries:
 ${diariesText}
-
-IMPORTANTE: A resposta deve ser EXATAMENTE este JSON:
-{
-  "summary": "Resumo clínico em 2 a 3 frases.",
-  "detected_patterns": ["padrão 1"],
-  "risk_alerts": ["alerta 1"],
-  "abandoned_topics": ["tópico 1"],
-  "intervention_suggestion": "sugestão"
-}`
+`
 
     const aiRes = $ai.chat({
       model: 'fast',
@@ -104,9 +118,30 @@ IMPORTANTE: A resposta deve ser EXATAMENTE este JSON:
     log.set('action', 'AI_ANALYSIS_GENERATED')
     log.set('table_name', 'clinical_insights')
     log.set('record_id', insight.id)
-    log.set('new_data', insight.publicExport())
+    log.set('new_data', {
+      usage: aiRes.usage,
+      patient_id: patientId,
+    })
     log.set('ip_address', 'system')
     $app.saveNoValidate(log)
+
+    const hasCritical =
+      Array.isArray(parsed.risk_alerts) && parsed.risk_alerts.some((a) => a.level === 'critical')
+    if (hasCritical) {
+      const notifCol = $app.findCollectionByNameOrId('notifications')
+      const notif = new Record(notifCol)
+      notif.set('profile', record.getString('professional'))
+      notif.set('patient', patientId)
+      notif.set('title', 'Alerta Clínico Detectado pela IA')
+      notif.set(
+        'body',
+        'A IA detectou um risco clínico crítico ou queda de humor acentuada na última análise.',
+      )
+      notif.set('type', 'clinical_risk')
+      notif.set('channel', 'in_app')
+      notif.set('status', 'Entregue')
+      $app.saveNoValidate(notif)
+    }
   } catch (err) {
     $app.logger().error('AI Insight Create Error', 'error', err.message)
   }
@@ -130,14 +165,12 @@ onRecordAfterUpdateSuccess((e) => {
     } catch (_) {}
 
     const dob = patient.getString('date_of_birth')
-    let age = 'desconhecida'
+    let age = 'unknown'
     if (dob) {
       const birthDate = new Date(dob)
-      const ageDiffMs = Date.now() - birthDate.getTime()
-      const ageDate = new Date(ageDiffMs)
-      age = Math.abs(ageDate.getUTCFullYear() - 1970).toString()
+      age = Math.abs(new Date(Date.now() - birthDate.getTime()).getUTCFullYear() - 1970).toString()
     }
-    const gender = patient.getString('gender') || 'não informado'
+    const gender = patient.getString('gender') || 'unknown'
 
     let evolsText = ''
     try {
@@ -145,11 +178,14 @@ onRecordAfterUpdateSuccess((e) => {
         'session_notes',
         `patient = '${patientId}' && status = 'finalizado'`,
         '-session_date',
-        5,
+        20,
         0,
       )
       evolsText = evols
-        .map((ev) => `Data: ${ev.getString('session_date')}\nConteúdo: ${ev.getString('content')}`)
+        .map(
+          (ev, i) =>
+            `Note ${evols.length - i} (Date: ${ev.getString('session_date')}): ${ev.getString('content')}`,
+        )
         .join('\n\n')
     } catch (_) {}
 
@@ -159,35 +195,48 @@ onRecordAfterUpdateSuccess((e) => {
         'diary_entries',
         `patient = '${patientId}' && type = 'sentimentos' && is_visible_to_professional = true`,
         '-entry_date',
-        10,
+        20,
         0,
       )
       diariesText = diaries
         .map(
           (d) =>
-            `Data: ${d.getString('entry_date')}\nHumor: ${d.getString('mood')} (Nota: ${d.getInt('mood_score')})\nConteúdo: ${d.getString('content')}`,
+            `Diary (Date: ${d.getString('entry_date')}): Mood: ${d.getString('mood')} (Score: ${d.getInt('mood_score')}). Content: ${d.getString('content')}`,
         )
         .join('\n\n')
     } catch (_) {}
 
-    const prompt = `Você é um assistente clínico de IA.
-Analise as notas da sessão e os diários e forneça insights estritamente em formato JSON.
-Dados anonimizados: Idade: ${age}, Gênero: ${gender}.
+    const prompt = `You are a clinical AI assistant. Analyze the session notes and diary entries below.
+Patient demographic (anonymized): Age: ${age}, Gender: ${gender}.
 
-Histórico Recente de Evoluções:
+Instructions:
+1. Extract clinical patterns and state their frequency (e.g., "3 consecutive sessions").
+2. Check for abandoned topics (topics mentioned in older notes but not in recent ones).
+3. Correlate diary entries with session notes (e.g., discrepancies in reported mood vs clinical note).
+4. Evaluate risk alerts. If there is a critical risk or mood drop, set level to "critical". If stable, set to "stable".
+5. Provide an intervention suggestion based on evidence.
+
+IMPORTANT: The response MUST be EXACTLY the following JSON format and translated to Brazilian Portuguese (PT-BR). Do NOT include any markdown formatting like \`\`\`json.
+{
+  "summary": "Brief clinical summary and diary correlation in 2 to 3 sentences.",
+  "detected_patterns": [
+    {"pattern": "description", "frequency": "frequency description"}
+  ],
+  "risk_alerts": [
+    {"alert": "description", "level": "critical" | "stable"}
+  ],
+  "abandoned_topics": [
+    {"topic": "description", "time_since_last_mention": "e.g., 30 days"}
+  ],
+  "intervention_suggestion": "suggestion"
+}
+
+Session Notes:
 ${evolsText}
 
-Diário de Sentimentos Recentes:
+Diary Entries:
 ${diariesText}
-
-IMPORTANTE: A resposta deve ser EXATAMENTE este JSON:
-{
-  "summary": "Resumo clínico em 2 a 3 frases.",
-  "detected_patterns": ["padrão 1"],
-  "risk_alerts": ["alerta 1"],
-  "abandoned_topics": ["tópico 1"],
-  "intervention_suggestion": "sugestão"
-}`
+`
 
     const aiRes = $ai.chat({
       model: 'fast',
@@ -220,9 +269,30 @@ IMPORTANTE: A resposta deve ser EXATAMENTE este JSON:
     log.set('action', 'AI_ANALYSIS_GENERATED')
     log.set('table_name', 'clinical_insights')
     log.set('record_id', insight.id)
-    log.set('new_data', insight.publicExport())
+    log.set('new_data', {
+      usage: aiRes.usage,
+      patient_id: patientId,
+    })
     log.set('ip_address', 'system')
     $app.saveNoValidate(log)
+
+    const hasCritical =
+      Array.isArray(parsed.risk_alerts) && parsed.risk_alerts.some((a) => a.level === 'critical')
+    if (hasCritical) {
+      const notifCol = $app.findCollectionByNameOrId('notifications')
+      const notif = new Record(notifCol)
+      notif.set('profile', record.getString('professional'))
+      notif.set('patient', patientId)
+      notif.set('title', 'Alerta Clínico Detectado pela IA')
+      notif.set(
+        'body',
+        'A IA detectou um risco clínico crítico ou queda de humor acentuada na última análise.',
+      )
+      notif.set('type', 'clinical_risk')
+      notif.set('channel', 'in_app')
+      notif.set('status', 'Entregue')
+      $app.saveNoValidate(notif)
+    }
   } catch (err) {
     $app.logger().error('AI Insight Update Error', 'error', err.message)
   }

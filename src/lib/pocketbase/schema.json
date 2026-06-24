@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-24T04:04:01.117Z",
+  "generatedAt": "2026-06-24T04:09:40.660Z",
   "collections": [
     {
       "name": "users",
@@ -2371,6 +2371,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "feedback",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["util", "nao_util"]
         }
       ],
       "indexes": [
