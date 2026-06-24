@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Calendar as CalendarIcon, CheckCircle2, DollarSign } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import useRealtime from '@/hooks/use-realtime'
+import { WelcomeTour } from '@/components/WelcomeTour'
 
 export default function Index() {
   const [stats, setStats] = useState({ today: 0, pending: 0, patients: 0, revenue: 0 })
@@ -111,6 +112,7 @@ export default function Index() {
           )}
         </CardContent>
       </Card>
+      <WelcomeTour />
     </div>
   )
 }

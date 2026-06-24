@@ -69,7 +69,7 @@ export default function Login() {
               />
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex-col gap-4">
             <Button
               type="submit"
               className="w-full bg-teal-600 hover:bg-teal-700 text-white"
@@ -77,6 +77,16 @@ export default function Login() {
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
+            <div className="text-center text-sm text-gray-500 w-full">
+              Não tem uma conta?{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/signup')}
+                className="text-teal-600 hover:underline font-medium"
+              >
+                Criar conta gratuita por 30 dias
+              </button>
+            </div>
           </CardFooter>
         </form>
       </Card>
