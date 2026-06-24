@@ -48,7 +48,8 @@ import { ptBR } from 'date-fns/locale'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
-import { WelcomeTour } from '@/components/WelcomeTour'
+import { OnboardingWizard } from '@/components/OnboardingWizard'
+import { Lightbulb, Zap } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -67,6 +68,15 @@ export default function Index() {
   const [crisisAlerts, setCrisisAlerts] = useState<any[]>([])
   const [selectedCrisis, setSelectedCrisis] = useState<any>(null)
   const [confirmingEmergency, setConfirmingEmergency] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
+
+  const tips = [
+    '💡 Dica: Você pode personalizar os templates de notificação em Configurações > Notificações.',
+    '💡 Dica: No Prontuário, você pode usar a estrutura SOAP para anotações mais organizadas.',
+    '💡 Dica: Adicione o link da sua sala de videoconferência na agenda para facilitar atendimentos online.',
+    '💡 Dica: Acompanhe sua inadimplência no painel financeiro para não esquecer cobranças.',
+  ]
+  const [currentTip, setCurrentTip] = useState(() => tips[Math.floor(Math.random() * tips.length)])
 
   const getPeriodDates = (period: string) => {
     const now = new Date()
@@ -234,6 +244,24 @@ export default function Index() {
     loadCrisisAlerts()
   }, [user, filter])
 
+  useEffect(() => {
+    if (
+      user &&
+      !user.onboarding_completed &&
+      user.role !== 'paciente' &&
+      user.role !== 'secretaria' &&
+      (user.onboarding_step === 1 || !user.onboarding_step)
+    ) {
+      setWizardOpen(true)
+    }
+  }, [user])
+
+  const handleHideTips = async () => {
+    if (!user) return
+    await pb.collection('users').update(user.id, { show_tips: false })
+    toast({ title: 'Dicas ocultadas permanentemente.' })
+  }
+
   useRealtime('appointments', () => loadData())
   useRealtime('financial_records', () => loadData())
   useRealtime('clinical_insights', () => loadData())
@@ -344,33 +372,94 @@ export default function Index() {
     )
   }
 
+  const isOnboarding =
+    user && user.role !== 'paciente' && user.role !== 'secretaria' && !user.onboarding_completed
+
   return (
     <div className="space-y-8 animate-fade-in pb-10">
-      {crisisAlerts.length > 0 && (
-        <div className="space-y-3">
-          {crisisAlerts.map((alert) => (
-            <Alert
-              key={alert.id}
-              className="bg-red-600 text-white border-red-800 cursor-pointer shadow-lg animate-fade-in-down"
-              onClick={() => {
-                setSelectedCrisis(alert)
-                setConfirmingEmergency(false)
-              }}
+      {isOnboarding ? (
+        <Card className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg mb-6 border-0">
+          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Zap className="h-6 w-6 text-yellow-300" /> Onboarding: {user.onboarding_step || 1}
+                /5 etapas ({(((user.onboarding_step || 1) / 5) * 100).toFixed(0)}%)
+              </h2>
+              <p className="text-teal-100 mt-1">
+                Conclua a configuração inicial para liberar todos os alertas e funcionalidades do
+                sistema.
+              </p>
+            </div>
+            <Button
+              onClick={() => setWizardOpen(true)}
+              className="bg-white text-teal-700 hover:bg-teal-50 whitespace-nowrap"
             >
-              <AlertTriangle className="h-6 w-6 text-white" />
-              <AlertTitle className="font-bold text-lg">
-                🚨 ALERTA DE CRISE — {alert.expand?.patient?.name}
-              </AlertTitle>
-              <AlertDescription className="text-red-50 mt-1">
-                <div className="mb-2">{alert.body}</div>
-                <div className="font-bold text-white mb-2">📞 Ligue CVV 188</div>
-                <div className="mt-3 font-semibold underline text-white">
-                  Clique aqui para abrir o protocolo de intervenção imediata.
+              Continuar Onboarding
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {crisisAlerts.length > 0 && (
+            <div className="space-y-3">
+              {crisisAlerts.map((alert) => (
+                <Alert
+                  key={alert.id}
+                  className="bg-red-600 text-white border-red-800 cursor-pointer shadow-lg animate-fade-in-down"
+                  onClick={() => {
+                    setSelectedCrisis(alert)
+                    setConfirmingEmergency(false)
+                  }}
+                >
+                  <AlertTriangle className="h-6 w-6 text-white" />
+                  <AlertTitle className="font-bold text-lg">
+                    🚨 ALERTA DE CRISE — {alert.expand?.patient?.name}
+                  </AlertTitle>
+                  <AlertDescription className="text-red-50 mt-1">
+                    <div className="mb-2">{alert.body}</div>
+                    <div className="font-bold text-white mb-2">📞 Ligue CVV 188</div>
+                    <div className="mt-3 font-semibold underline text-white">
+                      Clique aqui para abrir o protocolo de intervenção imediata.
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          )}
+
+          {!isOnboarding && user?.show_tips !== false && (
+            <Card className="bg-indigo-50 border-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-900 mb-6 shadow-sm">
+              <CardContent className="p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 dark:bg-indigo-900 p-2 rounded-full shrink-0">
+                    <Lightbulb className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <p className="text-sm font-medium text-indigo-900 dark:text-indigo-300">
+                    {currentTip}
+                  </p>
                 </div>
-              </AlertDescription>
-            </Alert>
-          ))}
-        </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 h-8"
+                    onClick={() => setCurrentTip(tips[Math.floor(Math.random() * tips.length)])}
+                  >
+                    Outra dica
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 hover:text-gray-700 hover:bg-gray-200 h-8"
+                    onClick={handleHideTips}
+                  >
+                    Ocultar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -520,7 +609,7 @@ export default function Index() {
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left Column: Alerts & Agenda */}
         <div className="md:col-span-2 space-y-6">
-          {data?.returnAlerts?.length > 0 && (
+          {!isOnboarding && data?.returnAlerts?.length > 0 && (
             <div className="space-y-3">
               {data.returnAlerts.map((alert: any, i: number) => (
                 <Alert
@@ -725,7 +814,7 @@ export default function Index() {
         </div>
       )}
 
-      <WelcomeTour />
+      <OnboardingWizard open={wizardOpen} onOpenChange={setWizardOpen} />
 
       <Dialog
         open={!!selectedCrisis}

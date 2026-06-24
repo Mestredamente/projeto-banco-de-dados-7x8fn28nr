@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { PatientWelcomeTour } from './PatientWelcomeTour'
+import { GlobalFeedback } from '@/components/GlobalFeedback'
 
 export default function Layout() {
   const { user, isAuthenticated, loading } = useAuth()
@@ -34,6 +35,7 @@ export default function Layout() {
               <Outlet />
             </div>
             <PatientWelcomeTour />
+            <GlobalFeedback />
           </main>
         </div>
       </div>
