@@ -1,9 +1,15 @@
-// @deps date-fns@4.1.0
 cronAdd('reminders_job', '0 * * * *', () => {
-  const { format, addDays } = require('date-fns')
   const allSettings = $app.findRecordsByFilter('notification_settings', '', '', 0, 0)
-  const tomorrow = addDays(new Date(), 1)
-  const tomorrowStr = format(tomorrow, 'yyyy-MM-dd')
+
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  const yyyy = tomorrow.getFullYear()
+  const mm = String(tomorrow.getMonth() + 1).padStart(2, '0')
+  const dd = String(tomorrow.getDate()).padStart(2, '0')
+
+  const tomorrowStr = `${yyyy}-${mm}-${dd}`
+  const tomorrowDisplay = `${dd}/${mm}/${yyyy}`
 
   for (const settings of allSettings) {
     const triggers = settings.get('triggers') || {}
@@ -57,7 +63,7 @@ cronAdd('reminders_job', '0 * * * *', () => {
       bodyText = bodyText.replace(/\[PACIENTE\]/g, patient.getString('name').split(' ')[0])
       bodyText = bodyText.replace(/\[PSICÓLOGO\]/g, prof.getString('name').split(' ')[0])
       bodyText = bodyText.replace(/\[HORÁRIO\]/g, apt.getString('start_time'))
-      bodyText = bodyText.replace(/\[DATA\]/g, format(tomorrow, 'dd/MM/yyyy'))
+      bodyText = bodyText.replace(/\[DATA\]/g, tomorrowDisplay)
       bodyText = bodyText.replace(/\[LINK\]/g, link)
 
       const notif = new Record($app.findCollectionByNameOrId('notifications'))

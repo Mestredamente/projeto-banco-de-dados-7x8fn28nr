@@ -1,4 +1,3 @@
-// @deps date-fns@4.1.0
 routerAdd('POST', '/backend/v1/appointments/confirm', (e) => {
   const body = e.requestInfo().body || {}
   const token = body.token
@@ -37,10 +36,19 @@ routerAdd('POST', '/backend/v1/appointments/confirm', (e) => {
     const templates = settings ? settings.get('templates') : {}
     let template = templates?.confirmacao || 'Sessão confirmada para [DATA] às [HORÁRIO]. Até lá!'
 
-    const { format } = require('date-fns')
-    const dateStr = record.getString('scheduled_date')
-      ? format(new Date(record.getString('scheduled_date')), 'dd/MM/yyyy')
-      : ''
+    let dateStr = ''
+    const schedRaw = record.getString('scheduled_date')
+    if (schedRaw) {
+      const match = schedRaw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+      if (match) {
+        dateStr = `${match[3]}/${match[2]}/${match[1]}`
+      } else {
+        const d = new Date(schedRaw)
+        if (!isNaN(d.getTime())) {
+          dateStr = `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`
+        }
+      }
+    }
 
     template = template.replace(/\[DATA\]/g, dateStr)
     template = template.replace(/\[HORÁRIO\]/g, record.getString('start_time'))

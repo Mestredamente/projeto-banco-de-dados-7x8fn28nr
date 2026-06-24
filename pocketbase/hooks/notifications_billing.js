@@ -1,4 +1,3 @@
-// @deps date-fns@4.1.0
 routerAdd(
   'POST',
   '/backend/v1/notifications/send-billing',
@@ -34,10 +33,19 @@ routerAdd(
       templates?.cobranca ||
       'Sessão de [DATA] no valor de R$ [VALOR]. Pagamento via [METODO]. Chave: [PIX]'
 
-    const { format } = require('date-fns')
-    const dateStr = finRecord.getString('due_date')
-      ? format(new Date(finRecord.getString('due_date')), 'dd/MM/yyyy')
-      : ''
+    let dateStr = ''
+    const dueRaw = finRecord.getString('due_date')
+    if (dueRaw) {
+      const match = dueRaw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+      if (match) {
+        dateStr = `${match[3]}/${match[2]}/${match[1]}`
+      } else {
+        const d = new Date(dueRaw)
+        if (!isNaN(d.getTime())) {
+          dateStr = `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`
+        }
+      }
+    }
     const valorStr = finRecord.get('value') ? finRecord.get('value').toFixed(2) : '0.00'
     const bankDetails = professional.get('bank_details') || {}
 
