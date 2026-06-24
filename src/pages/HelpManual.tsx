@@ -6,11 +6,16 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Input } from '@/components/ui/input'
-import { Search, Book, HelpCircle, Video, BookOpen, PlayCircle } from 'lucide-react'
+import { Search, Book, HelpCircle, Video, BookOpen, PlayCircle, Settings2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import pb from '@/lib/pocketbase/client'
+import { OnboardingWizard } from '@/components/OnboardingWizard'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function HelpManual() {
+  const { user } = useAuth()
+  const [wizardOpen, setWizardOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [manualItems, setManualItems] = useState<any[]>([])
 
@@ -150,6 +155,35 @@ export default function HelpManual() {
           </div>
         </section>
       </div>
+
+      {user?.onboarding_completed && (
+        <section className="space-y-5 mt-10">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+            <Settings2 className="h-6 w-6 text-teal-600" /> Revisar Configurações Iniciais
+          </h2>
+          <Card className="shadow-sm border-0 ring-1 ring-teal-100 dark:ring-teal-900/50">
+            <CardHeader className="py-4 px-5">
+              <CardTitle className="text-base text-teal-700 dark:text-teal-400 font-bold">
+                Revisar Onboarding
+              </CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-300 mt-2 text-sm leading-relaxed">
+                Quer alterar suas preferências ou rever o passo a passo inicial do sistema? Você
+                pode refazer o assistente de configurações a qualquer momento sem afetar o status da
+                sua conta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              <Button
+                onClick={() => setWizardOpen(true)}
+                className="bg-teal-600 hover:bg-teal-700 text-white"
+              >
+                Iniciar Revisão
+              </Button>
+            </CardContent>
+          </Card>
+          <OnboardingWizard open={wizardOpen} onOpenChange={setWizardOpen} reviewMode={true} />
+        </section>
+      )}
     </div>
   )
 }

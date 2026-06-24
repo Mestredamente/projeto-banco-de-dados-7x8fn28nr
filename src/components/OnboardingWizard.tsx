@@ -18,9 +18,14 @@ import { CheckCircle2, UserPlus, PlayCircle, Settings, PartyPopper } from 'lucid
 interface OnboardingWizardProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  reviewMode?: boolean
 }
 
-export function OnboardingWizard({ open, onOpenChange }: OnboardingWizardProps) {
+export function OnboardingWizard({
+  open,
+  onOpenChange,
+  reviewMode = false,
+}: OnboardingWizardProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -36,21 +41,45 @@ export function OnboardingWizard({ open, onOpenChange }: OnboardingWizardProps) 
   const [reminders, setReminders] = useState(true)
   const [billingAlerts, setBillingAlerts] = useState(true)
 
+  const [initialized, setInitialized] = useState(false)
+
   useEffect(() => {
-    if (user && open) {
-      setStep(user.onboarding_step || 1)
+    if (!open) {
+      setInitialized(false)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (user && open && !initialized) {
+      setStep(reviewMode ? 1 : user.onboarding_step || 1)
       setPhone(user.phone || '')
       setSpecializations(Array.isArray(user.specializations) ? user.specializations.join(', ') : '')
       setClinicalApproach(user.clinical_approach || '')
+
+      pb.collection('notification_settings')
+        .getFirstListItem(`user="${user.id}"`)
+        .then((settings) => {
+          if (settings && settings.triggers) {
+            setReminders(settings.triggers.reminders ?? true)
+            setBillingAlerts(settings.triggers.billingAlerts ?? true)
+          }
+        })
+        .catch(() => {
+          // ignore if no settings found
+        })
+
+      setInitialized(true)
     }
-  }, [user, open])
+  }, [user, open, reviewMode, initialized])
 
   const saveProgress = async (newStep: number, isComplete: boolean = false) => {
     if (!user) return
     try {
       setLoading(true)
       const data: any = { onboarding_step: newStep }
-      if (isComplete) data.onboarding_completed = true
+      if (isComplete || reviewMode) {
+        data.onboarding_completed = true
+      }
 
       if (step === 2) {
         data.phone = phone
@@ -269,22 +298,47 @@ export function OnboardingWizard({ open, onOpenChange }: OnboardingWizardProps) 
                     <PartyPopper className="h-14 w-14 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  🎉 Você concluiu o onboarding!
-                </p>
-                <p className="text-gray-600 dark:text-gray-300 text-lg max-w-sm mx-auto">
-                  Agora é só explorar o Syntra. Seu ambiente clínico digital está 100% pronto para
-                  alavancar seus atendimentos.
-                </p>
-                <div className="flex justify-center pt-4">
-                  <Button
-                    onClick={handleAgendaRedirect}
-                    size="lg"
-                    className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-8 shadow-md"
-                  >
-                    Que tal agendar sua primeira sessão?
-                  </Button>
-                </div>
+                {reviewMode ? (
+                  <>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      🎉 Onboarding revisado com sucesso.
+                    </p>
+                    <p className="text-gray-600 dark:text-gray-300 text-lg max-w-sm mx-auto">
+                      Suas configurações foram atualizadas.
+                    </p>
+                    <div className="flex justify-center pt-4">
+                      <Button
+                        onClick={() => {
+                          onOpenChange(false)
+                          navigate('/')
+                        }}
+                        size="lg"
+                        className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-8 shadow-md"
+                      >
+                        Voltar ao Dashboard
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      🎉 Você concluiu o onboarding!
+                    </p>
+                    <p className="text-gray-600 dark:text-gray-300 text-lg max-w-sm mx-auto">
+                      Agora é só explorar o Syntra. Seu ambiente clínico digital está 100% pronto
+                      para alavancar seus atendimentos.
+                    </p>
+                    <div className="flex justify-center pt-4">
+                      <Button
+                        onClick={handleAgendaRedirect}
+                        size="lg"
+                        className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-8 shadow-md"
+                      >
+                        Que tal agendar sua primeira sessão?
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
