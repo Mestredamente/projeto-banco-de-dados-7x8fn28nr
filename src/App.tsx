@@ -9,6 +9,7 @@ import Signup from './pages/Signup'
 import Agenda from './pages/Agenda'
 import Patients from './pages/Patients'
 import PatientProfile from './pages/PatientProfile'
+import PatientForm from './pages/PatientForm'
 import Clinics from './pages/Clinics'
 import SessionNotes from './pages/SessionNotes'
 import Settings from './pages/Settings'
@@ -28,7 +29,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/patients" element={<Patients />} />
+            <Route path="/patients/new" element={<PatientForm />} />
             <Route path="/patients/:id" element={<PatientProfile />} />
+            <Route path="/patients/:id/edit" element={<PatientForm />} />
             <Route path="/clinics" element={<Clinics />} />
             <Route path="/notes" element={<SessionNotes />} />
             <Route path="/settings" element={<Settings />} />
