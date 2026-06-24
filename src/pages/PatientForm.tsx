@@ -223,7 +223,7 @@ export default function PatientForm() {
               onChange={(e) => field.onChange(maskFn ? maskFn(e.target.value) : e.target.value)}
               onBlur={(e) => {
                 field.onBlur()
-                onBlur && onBlur(e.target.value)
+                if (onBlur) onBlur(e.target.value)
               }}
             />
           </FormControl>
