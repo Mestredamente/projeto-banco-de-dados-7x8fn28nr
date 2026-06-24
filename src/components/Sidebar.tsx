@@ -11,9 +11,11 @@ import {
   DollarSign,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { usePatient } from '@/hooks/use-patient'
 import { Button } from '@/components/ui/button'
+import { HeartPulse } from 'lucide-react'
 
-const NAV_ITEMS = [
+const NAV_ITEMS_PSICO = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Agenda', path: '/agenda', icon: Calendar },
   { name: 'Pacientes', path: '/patients', icon: Users },
@@ -25,7 +27,28 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const { pathname } = useLocation()
-  const { signOut } = useAuth()
+  const { signOut, user } = useAuth()
+  const { patient } = usePatient()
+
+  const isPatient = user?.role === 'paciente'
+  const perms = patient?.portal_permissions || { diary: true, financial: true, evolutions: true }
+
+  const NAV_ITEMS = isPatient
+    ? [
+        { name: 'Dashboard', path: '/patient-portal', icon: LayoutDashboard },
+        { name: 'Agendamentos', path: '/patient-portal/agenda', icon: Calendar },
+        ...(perms.diary
+          ? [{ name: 'Diário de Sentimentos', path: '/patient-portal/diary', icon: HeartPulse }]
+          : []),
+        ...(perms.financial
+          ? [{ name: 'Financeiro', path: '/patient-portal/financial', icon: DollarSign }]
+          : []),
+        ...(perms.evolutions
+          ? [{ name: 'Evoluções', path: '/patient-portal/evolutions', icon: FileText }]
+          : []),
+        { name: 'Configurações', path: '/settings', icon: Settings },
+      ]
+    : NAV_ITEMS_PSICO
 
   return (
     <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-full shrink-0 shadow-sm">

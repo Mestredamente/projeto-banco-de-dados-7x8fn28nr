@@ -37,6 +37,8 @@ export function WelcomeTour() {
     }
   }
 
+  const isPatient = user?.role === 'paciente'
+
   const stepsIniciante = [
     {
       title: 'Bem-vindo ao Sistema!',
@@ -75,12 +77,12 @@ export function WelcomeTour() {
   ]
 
   let currentSteps = stepsIniciante
-  if (level === 'intermediario') currentSteps = stepsIntermediario
-  if (level === 'avancado') currentSteps = stepsAvancado
+  if (!isPatient && level === 'intermediario') currentSteps = stepsIntermediario
+  if (!isPatient && level === 'avancado') currentSteps = stepsAvancado
 
-  if (!isOpen) return null
+  if (!isOpen || isPatient) return null
 
-  if (level === null) {
+  if (!isPatient && level === null) {
     return (
       <Dialog
         open={isOpen}

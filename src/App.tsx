@@ -4,6 +4,11 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Layout from './components/Layout'
 import Index from './pages/Index'
+import PatientDashboard from './pages/patient/PatientDashboard'
+import PatientAgenda from './pages/patient/PatientAgenda'
+import PatientDiary from './pages/patient/PatientDiary'
+import PatientFinancial from './pages/patient/PatientFinancial'
+import PatientEvolutions from './pages/patient/PatientEvolutions'
 import Login from './pages/Login'
 import ConfirmAppointment from './pages/ConfirmAppointment'
 import Signup from './pages/Signup'
@@ -30,6 +35,11 @@ const App = () => (
           <Route path="/confirmar" element={<ConfirmAppointment />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Index />} />
+            <Route path="/patient-portal" element={<PatientDashboard />} />
+            <Route path="/patient-portal/agenda" element={<PatientAgenda />} />
+            <Route path="/patient-portal/diary" element={<PatientDiary />} />
+            <Route path="/patient-portal/financial" element={<PatientFinancial />} />
+            <Route path="/patient-portal/evolutions" element={<PatientEvolutions />} />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/patients" element={<Patients />} />
             <Route path="/patients/new" element={<PatientForm />} />
