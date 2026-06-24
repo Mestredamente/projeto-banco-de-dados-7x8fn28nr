@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-24T05:18:46.300Z",
+  "generatedAt": "2026-06-24T05:25:17.775Z",
   "collections": [
     {
       "name": "users",
@@ -133,6 +133,24 @@
         {
           "name": "show_tips",
           "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "academic_title",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "academic_institution",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "research_areas",
+          "type": "json",
           "required": false,
           "system": false
         }
@@ -554,6 +572,12 @@
         {
           "name": "portal_permissions",
           "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "research_consent",
+          "type": "bool",
           "required": false,
           "system": false
         }
@@ -3234,6 +3258,54 @@
           "name": "system_version",
           "type": "text",
           "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "research_exports",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user = @request.auth.id",
+        "view": "@request.auth.id != '' && user = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && user = @request.auth.id",
+        "delete": "@request.auth.id != '' && user = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "export_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["XML", "CSV", "PDF", "DOCX"]
+        },
+        {
+          "name": "records_count",
+          "type": "number",
+          "required": true,
           "system": false
         },
         {

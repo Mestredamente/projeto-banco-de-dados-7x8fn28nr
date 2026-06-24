@@ -24,6 +24,7 @@ export default function PatientForm() {
     cpf: '',
     date_of_birth: '',
     notes: '',
+    research_consent: false,
     portal_permissions: {
       diary: true,
       financial: true,
@@ -45,6 +46,7 @@ export default function PatientForm() {
             cpf: record.cpf || '',
             date_of_birth: record.date_of_birth ? record.date_of_birth.substring(0, 10) : '',
             notes: record.notes || '',
+            research_consent: record.research_consent || false,
             portal_permissions: {
               diary: true,
               financial: true,
@@ -288,6 +290,20 @@ export default function PatientForm() {
                     portal_permissions: { ...formData.portal_permissions, evolutions: v },
                   })
                 }
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="space-y-1">
+                <Label className="text-base text-blue-900">Consentimento para Pesquisa (P&D)</Label>
+                <p className="text-sm text-blue-700">
+                  Autoriza o uso de dados de forma estritamente anonimizada para fins de produção
+                  científica e estatística, independente do termo clínico geral.
+                </p>
+              </div>
+              <Switch
+                checked={formData.research_consent}
+                onCheckedChange={(v) => setFormData({ ...formData, research_consent: v })}
               />
             </div>
           </CardContent>

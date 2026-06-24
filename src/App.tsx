@@ -35,6 +35,7 @@ import Referrals from './pages/Referrals'
 import Supervisions from './pages/Supervisions'
 import Academy from './pages/Academy'
 import AcademyCourse from './pages/AcademyCourse'
+import Research from './pages/Research'
 import HelpManual from './pages/HelpManual'
 import NotFound from './pages/NotFound'
 import { AuthProvider } from './hooks/use-auth'
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/clinic-admin" element={<ClinicAdmin />} />
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/supervisions" element={<Supervisions />} />
+            <Route path="/research" element={<Research />} />
             <Route path="/academy" element={<Academy />} />
             <Route path="/academy/:id" element={<AcademyCourse />} />
             <Route path="/ajuda" element={<HelpManual />} />
