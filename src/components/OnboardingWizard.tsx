@@ -155,14 +155,17 @@ export function OnboardingWizard({ open, onOpenChange }: OnboardingWizardProps) 
                   Olá, <strong>{user?.name?.split(' ')[0] || 'Doutor(a)'}</strong>! O Syntra vai
                   ajudar você a gerenciar sua clínica com mais eficiência e inteligência.
                 </p>
-                <div className="aspect-video bg-black rounded-lg flex items-center justify-center relative overflow-hidden shadow-md">
-                  <iframe
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/dQw4w9WgXcQ?controls=1"
-                    title="Bem-vindo ao Syntra"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                <div className="bg-teal-50 dark:bg-teal-900/10 rounded-xl p-8 flex flex-col items-center justify-center text-center border border-teal-100 dark:border-teal-800">
+                  <div className="bg-teal-100 dark:bg-teal-900/30 p-4 rounded-full mb-4">
+                    <PlayCircle className="h-8 w-8 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-teal-800 dark:text-teal-300 mb-2">
+                    📹 Vídeo de boas-vindas em breve
+                  </h3>
+                  <p className="text-teal-600 dark:text-teal-400/80">
+                    O Syntra está preparando um vídeo de boas-vindas para você. Enquanto isso,
+                    clique em Próximo para continuar.
+                  </p>
                 </div>
               </div>
             )}
@@ -306,7 +309,7 @@ export function OnboardingWizard({ open, onOpenChange }: OnboardingWizardProps) 
                   disabled={loading}
                   className="bg-teal-600 hover:bg-teal-700 text-white px-8"
                 >
-                  {loading ? 'Salvando...' : 'Avançar'}
+                  {loading ? 'Salvando...' : step === 1 ? 'Próximo' : 'Avançar'}
                 </Button>
               </div>
             ) : (

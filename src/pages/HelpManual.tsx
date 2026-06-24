@@ -52,38 +52,45 @@ export default function HelpManual() {
         />
       </div>
 
-      {videos.length > 0 && (
-        <section className="space-y-5">
-          <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
-            <Video className="h-6 w-6 text-purple-600" /> Tutoriais em Vídeo
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {videos.map((v) => (
-              <Card
-                key={v.id}
-                className="overflow-hidden hover:shadow-lg transition-shadow border-0 shadow-sm bg-white dark:bg-gray-900 ring-1 ring-gray-100 dark:ring-gray-800"
+      <section className="space-y-5">
+        <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+          <Video className="h-6 w-6 text-purple-600" /> Em breve — Tutoriais em vídeo do Syntra
+        </h2>
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-800 p-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Nossa equipe de especialistas está preparando uma série de vídeos rápidos e práticos
+            para ajudar você a dominar cada área do sistema.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              'Dashboard',
+              'Cadastro de Pacientes',
+              'Agenda',
+              'Prontuário',
+              'Financeiro',
+              'Relatórios',
+              'Portal do Paciente',
+              'Gestão de Clínica',
+              'Secretária',
+              'Supervisão',
+              'Syntra Academy',
+              'Onboarding',
+            ].map((module) => (
+              <div
+                key={module}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-800"
               >
-                <div className="aspect-video relative bg-black">
-                  <iframe
-                    src={v.video_url}
-                    className="w-full h-full"
-                    title={v.title}
-                    allowFullScreen
-                  />
-                </div>
-                <CardHeader className="p-5">
-                  <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                    <PlayCircle className="h-5 w-5 text-purple-500" /> {v.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm font-medium text-gray-500">
-                    Duração estimada: {v.video_duration || 'Curto'}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+                <span className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                  {module}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-1 rounded-md flex items-center gap-1">
+                  <PlayCircle className="w-3 h-3" /> Em produção
+                </span>
+              </div>
             ))}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       <div className="grid md:grid-cols-2 gap-10 mt-6">
         <section className="space-y-5">
