@@ -8,6 +8,7 @@ import {
   FileText,
   Settings,
   LogOut,
+  DollarSign,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { name: 'Agenda', path: '/agenda', icon: Calendar },
   { name: 'Pacientes', path: '/patients', icon: Users },
   { name: 'Clínicas', path: '/clinics', icon: Building2 },
+  { name: 'Financeiro', path: '/financeiro', icon: DollarSign },
   { name: 'Prontuários', path: '/notes', icon: FileText },
   { name: 'Configurações', path: '/settings', icon: Settings },
 ]

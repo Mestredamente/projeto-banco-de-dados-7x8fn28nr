@@ -12,6 +12,7 @@ import Patients from './pages/Patients'
 import PatientProfile from './pages/PatientProfile'
 import PatientForm from './pages/PatientForm'
 import Clinics from './pages/Clinics'
+import Financial from './pages/Financial'
 import SessionNotes from './pages/SessionNotes'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/patients/:id" element={<PatientProfile />} />
             <Route path="/patients/:id/edit" element={<PatientForm />} />
             <Route path="/clinics" element={<Clinics />} />
+            <Route path="/financeiro" element={<Financial />} />
             <Route path="/notes" element={<SessionNotes />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
