@@ -37,8 +37,6 @@ export default function PatientProfile() {
     }
   }, [id, navigate])
 
-  if (!patient) return <div className="p-8 text-center">Carregando...</div>
-
   const [showRetentionAlert, setShowRetentionAlert] = useState(false)
 
   useEffect(() => {
@@ -70,6 +68,8 @@ export default function PatientProfile() {
   }, [patient])
 
   const isPsychologist = ['psicologo_autonomo', 'psicologo_vinculado'].includes(user?.role || '')
+
+  if (!patient) return <div className="p-8 text-center">Carregando...</div>
 
   const handleRetentionAction = async (action: 'maintain' | 'anonymize' | 'delete') => {
     try {
