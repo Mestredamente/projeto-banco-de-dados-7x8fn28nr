@@ -72,6 +72,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
       module: 'paciente_portal',
     },
     { name: 'Pacientes', path: '/patients', icon: Users, module: 'pacientes' },
+    { name: 'Grupos Terapêuticos', path: '/grupos', icon: Users, module: 'pacientes' },
     { name: 'Prontuário', path: '/notes', icon: FileText, module: 'prontuario' },
     { name: 'Financeiro', path: '/financeiro', icon: DollarSign, module: 'financeiro' },
     { name: 'Relatórios', path: '/reports', icon: BarChart2, module: 'relatorios' },
@@ -92,7 +93,11 @@ export function Sidebar({ collapsed }: SidebarProps) {
     )
   } else if (activeProfile?.id === 'secretaria') {
     allowedItems = allowedItems.filter(
-      (i) => i.path !== '/dashboard' && i.path !== '/clinica/home' && i.path !== '/ai-alerts',
+      (i) =>
+        i.path !== '/dashboard' &&
+        i.path !== '/clinica/home' &&
+        i.path !== '/ai-alerts' &&
+        i.path !== '/grupos',
     )
     const homeIdx = allowedItems.findIndex((i) => i.path === '/secretaria/home')
     if (homeIdx !== -1) allowedItems[homeIdx].name = 'Home'
@@ -103,6 +108,10 @@ export function Sidebar({ collapsed }: SidebarProps) {
     allowedItems = allowedItems.filter(
       (i) => i.path !== '/secretaria/home' && i.path !== '/clinica/home',
     )
+  }
+
+  if (activeProfile?.id === 'gestor_saas' || activeProfile?.id === 'paciente') {
+    allowedItems = allowedItems.filter((i) => i.path !== '/grupos')
   }
 
   allowedItems = allowedItems.filter(

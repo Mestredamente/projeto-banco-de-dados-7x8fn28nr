@@ -37,6 +37,9 @@ import Research from './pages/Research'
 import HelpManual from './pages/HelpManual'
 import AiAlerts from './pages/AiAlerts'
 import NotFound from './pages/NotFound'
+import ListaGrupos from './pages/grupos/ListaGrupos'
+import FormularioGrupo from './pages/grupos/FormularioGrupo'
+import DetalhesGrupo from './pages/grupos/DetalhesGrupo'
 import { AuthProvider } from './hooks/use-auth'
 import { BrandingProvider } from './hooks/use-branding'
 import { ProfileProvider, useProfile } from './hooks/use-profile'
@@ -117,6 +120,10 @@ const App = () => (
                       <Route path="/patients/:id" element={<PatientProfile />} />
                       <Route path="/patients/:id/edit" element={<PatientForm />} />
                       <Route path="/referrals" element={<Referrals />} />
+                      <Route path="/grupos" element={<ListaGrupos />} />
+                      <Route path="/grupos/novo" element={<FormularioGrupo />} />
+                      <Route path="/grupos/:id" element={<DetalhesGrupo />} />
+                      <Route path="/grupos/:id/editar" element={<FormularioGrupo />} />
                     </Route>
 
                     <Route element={<RouteGuard allowedModules={['financeiro']} />}>
