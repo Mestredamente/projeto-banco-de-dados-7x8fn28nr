@@ -39,6 +39,7 @@ import { AuthProvider } from './hooks/use-auth'
 import { BrandingProvider } from './hooks/use-branding'
 import { ProfileProvider, useProfile } from './hooks/use-profile'
 import { RouteGuard } from './components/RouteGuard'
+import { OnboardingGuard } from './components/OnboardingGuard'
 import ClinicProfile from './pages/ClinicProfile'
 import { SystemToastContainer } from '@/components/system'
 
@@ -68,83 +69,89 @@ const App = () => (
                   </SaasBlocker>
                 }
               >
-                <Route element={<Layout />}>
-                  <Route path="/" element={<RootRedirect />} />
+                <Route element={<OnboardingGuard />}>
+                  <Route element={<Layout />}>
+                    <Route path="/" element={<RootRedirect />} />
 
-                  <Route element={<RouteGuard allowedModules={['dashboard']} />}>
-                    <Route path="/dashboard" element={<IndexBase />} />
-                  </Route>
-                  <Route element={<RouteGuard allowedModules={['gestao_clinica', 'dashboard']} />}>
-                    <Route path="/clinica/home" element={<ClinicHomeDashboard />} />
-                  </Route>
-                  <Route element={<RouteGuard allowedModules={['agenda', 'dashboard']} />}>
-                    <Route path="/secretaria/home" element={<SecretaryDashboard />} />
-                  </Route>
-                  <Route element={<RouteGuard allowedModules={['gestao_assinantes']} />}>
-                    <Route path="/gestao" element={<SaasAdmin />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['dashboard']} />}>
+                      <Route path="/dashboard" element={<IndexBase />} />
+                    </Route>
+                    <Route
+                      element={<RouteGuard allowedModules={['gestao_clinica', 'dashboard']} />}
+                    >
+                      <Route path="/clinica/home" element={<ClinicHomeDashboard />} />
+                    </Route>
+                    <Route element={<RouteGuard allowedModules={['agenda', 'dashboard']} />}>
+                      <Route path="/secretaria/home" element={<SecretaryDashboard />} />
+                    </Route>
+                    <Route element={<RouteGuard allowedModules={['gestao_assinantes']} />}>
+                      <Route path="/gestao" element={<SaasAdmin />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['paciente_portal']} />}>
-                    <Route path="/patient-portal" element={<PatientDashboard />} />
-                    <Route path="/patient-portal/agenda" element={<PatientAgenda />} />
-                    <Route path="/patient-portal/diary" element={<PatientDiary />} />
-                    <Route path="/patient-portal/financial" element={<PatientFinancial />} />
-                    <Route path="/patient-portal/evolutions" element={<PatientEvolutions />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['paciente_portal']} />}>
+                      <Route path="/patient-portal" element={<PatientDashboard />} />
+                      <Route path="/patient-portal/agenda" element={<PatientAgenda />} />
+                      <Route path="/patient-portal/diary" element={<PatientDiary />} />
+                      <Route path="/patient-portal/financial" element={<PatientFinancial />} />
+                      <Route path="/patient-portal/evolutions" element={<PatientEvolutions />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['gestao_clinica']} />}>
-                    <Route path="/clinic-profile" element={<ClinicProfile />} />
-                    <Route path="/clinics" element={<Clinics />} />
-                    <Route path="/clinic-admin" element={<ClinicAdmin />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['gestao_clinica']} />}>
+                      <Route path="/clinic-profile" element={<ClinicProfile />} />
+                      <Route path="/clinics" element={<Clinics />} />
+                      <Route path="/clinic-admin" element={<ClinicAdmin />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['agenda']} />}>
-                    <Route path="/agenda" element={<Agenda />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['agenda']} />}>
+                      <Route path="/agenda" element={<Agenda />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['pacientes']} />}>
-                    <Route path="/patients" element={<Patients />} />
-                    <Route path="/patients/new" element={<PatientForm />} />
-                    <Route path="/patients/:id" element={<PatientProfile />} />
-                    <Route path="/patients/:id/edit" element={<PatientForm />} />
-                    <Route path="/referrals" element={<Referrals />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['pacientes']} />}>
+                      <Route path="/patients" element={<Patients />} />
+                      <Route path="/patients/new" element={<PatientForm />} />
+                      <Route path="/patients/:id" element={<PatientProfile />} />
+                      <Route path="/patients/:id/edit" element={<PatientForm />} />
+                      <Route path="/referrals" element={<Referrals />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['financeiro']} />}>
-                    <Route path="/financeiro" element={<Financial />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['financeiro']} />}>
+                      <Route path="/financeiro" element={<Financial />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['prontuario']} />}>
-                    <Route path="/notes" element={<SessionNotes />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['prontuario']} />}>
+                      <Route path="/notes" element={<SessionNotes />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['relatorios']} />}>
-                    <Route path="/reports" element={<Reports />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['relatorios']} />}>
+                      <Route path="/reports" element={<Reports />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['secretarias']} />}>
-                    <Route path="/secretaries" element={<Secretaries />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['secretarias']} />}>
+                      <Route path="/secretaries" element={<Secretaries />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['supervisao']} />}>
-                    <Route path="/supervisions" element={<Supervisions />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['supervisao']} />}>
+                      <Route path="/supervisions" element={<Supervisions />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['pd']} />}>
-                    <Route path="/research" element={<Research />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['pd']} />}>
+                      <Route path="/research" element={<Research />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['academy']} />}>
-                    <Route path="/academy" element={<Academy />} />
-                    <Route path="/academy/:id" element={<AcademyCourse />} />
-                  </Route>
+                    <Route element={<RouteGuard allowedModules={['academy']} />}>
+                      <Route path="/academy" element={<Academy />} />
+                      <Route path="/academy/:id" element={<AcademyCourse />} />
+                    </Route>
 
-                  <Route element={<RouteGuard allowedModules={['dashboard', 'gestao_clinica']} />}>
-                    <Route path="/ai-alerts" element={<AiAlerts />} />
-                  </Route>
+                    <Route
+                      element={<RouteGuard allowedModules={['dashboard', 'gestao_clinica']} />}
+                    >
+                      <Route path="/ai-alerts" element={<AiAlerts />} />
+                    </Route>
 
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/ajuda" element={<HelpManual />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/ajuda" element={<HelpManual />} />
+                  </Route>
                 </Route>
               </Route>
               <Route path="*" element={<NotFound />} />

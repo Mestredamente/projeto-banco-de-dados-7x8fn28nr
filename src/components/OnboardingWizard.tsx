@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useAuth } from '@/hooks/use-auth'
+import { useProfile } from '@/hooks/use-profile'
 import pb from '@/lib/pocketbase/client'
 import { CheckCircle2, UserPlus, PlayCircle, Settings, PartyPopper } from 'lucide-react'
 
@@ -27,6 +28,7 @@ export function OnboardingWizard({
   reviewMode = false,
 }: OnboardingWizardProps) {
   const { user } = useAuth()
+  const { getHomeRoute, activeProfile } = useProfile()
   const navigate = useNavigate()
 
   const [step, setStep] = useState<number>(1)
@@ -107,6 +109,9 @@ export function OnboardingWizard({
       }
 
       await pb.collection('users').update(user.id, data)
+      if (isComplete) {
+        await pb.collection('users').authRefresh()
+      }
       setStep(newStep)
       if (isComplete) {
         onOpenChange(false)
@@ -125,21 +130,30 @@ export function OnboardingWizard({
 
   const handlePatientRedirect = () => {
     saveProgress(step + 1)
-    onOpenChange(false)
     navigate('/patients/new')
   }
 
-  const handleAgendaRedirect = () => {
-    saveProgress(5, true)
+  const handleAgendaRedirect = async () => {
+    await saveProgress(5, true)
     onOpenChange(false)
-    navigate('/agenda')
+    if (window.location.pathname !== '/patients/new') {
+      navigate(getHomeRoute(activeProfile?.id))
+    }
   }
 
   const progressPercentage = (step / 5) * 100
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] gap-0 p-0 overflow-hidden outline-none">
+      <DialogContent
+        className="sm:max-w-[600px] gap-0 p-0 overflow-hidden outline-none"
+        onInteractOutside={(e) => {
+          if (!reviewMode && !user?.onboarding_completed) e.preventDefault()
+        }}
+        onEscapeKeyDown={(e) => {
+          if (!reviewMode && !user?.onboarding_completed) e.preventDefault()
+        }}
+      >
         <div className="bg-teal-50 dark:bg-teal-950 h-2 w-full">
           <div
             className="bg-teal-500 h-full transition-all duration-500 ease-out"
@@ -367,11 +381,7 @@ export function OnboardingWizard({
                 </Button>
               </div>
             ) : (
-              <Button
-                onClick={() => saveProgress(5, true)}
-                variant="ghost"
-                className="w-full sm:w-auto"
-              >
+              <Button onClick={handleAgendaRedirect} variant="ghost" className="w-full sm:w-auto">
                 Fechar Assistente
               </Button>
             )}
