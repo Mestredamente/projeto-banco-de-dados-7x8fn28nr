@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Sparkles, Info } from 'lucide-react'
+import { Sparkles, Info, CheckCircle2, XCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -27,6 +27,7 @@ import { PatientReferralsTab, ReferralDialog } from '@/components/patients/Patie
 import { PatientSessions } from '@/components/patients/PatientSessions'
 import { PatientFinancialTab } from '@/components/patients/PatientFinancialTab'
 import { PatientScales } from '@/components/patients/PatientScales'
+import { Badge } from '@/components/system/Badge'
 
 export default function PatientProfile() {
   const { id } = useParams()
@@ -161,12 +162,45 @@ export default function PatientProfile() {
 
   const patientSince = new Date(patient.created).toLocaleDateString('pt-BR')
 
+  const ConsentDisplayRow = ({ title, field }: { title: string; field: string }) => {
+    const isAccepted = !!patient[field]
+    const date = patient[field]
+    return (
+      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+        <div>
+          <p className="font-medium text-slate-900">{title}</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {isAccepted && date
+              ? `Aceito em ${new Date(date).toLocaleString('pt-BR')}`
+              : 'Não aceito ou pendente'}
+          </p>
+        </div>
+        <div>
+          {isAccepted ? (
+            <Badge variant="success" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+              <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aceito
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-slate-200">
+              <XCircle className="w-3.5 h-3.5 mr-1" /> Pendente
+            </Badge>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{patient.name}</h1>
           <p className="text-gray-500 mt-1">Paciente desde {patientSince}</p>
+          {patient.minor_guardian_name && (
+            <Badge variant="outline" className="mt-2 bg-amber-50 text-amber-700 border-amber-200">
+              Responsável Legal: {patient.minor_guardian_name}
+            </Badge>
+          )}
         </div>
         <div className="flex flex-wrap gap-3">
           {isPsychologist && (
@@ -360,6 +394,25 @@ export default function PatientProfile() {
               </div>
             </CardContent>
           </Card>
+
+          {patient.minor_guardian_name && (
+            <Card className="border-amber-100">
+              <CardHeader className="bg-amber-50/50">
+                <CardTitle className="text-amber-900">Responsável Legal</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <span className="text-sm text-gray-500">Nome do Responsável</span>
+                  <p className="font-medium">{patient.minor_guardian_name}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">CPF do Responsável</span>
+                  <p className="font-medium">{patient.minor_guardian_cpf}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Contato de Emergência</CardTitle>
@@ -435,216 +488,30 @@ export default function PatientProfile() {
 
         <TabsContent value="consentimentos" className="mt-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Consentimentos e LGPD</CardTitle>
-              <button
-                onClick={(e) => {
-                  const form = document.getElementById('consent-management-form')
-                  if (form) form.classList.toggle('hidden')
-                  const display = document.getElementById('consent-display')
-                  if (display) display.classList.toggle('hidden')
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-medium rounded-md transition-colors"
-              >
-                Gerenciar Consentimentos
-              </button>
-            </CardHeader>
-            <CardContent>
-              {/* Display Mode */}
-              <div id="consent-display" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                  <div
-                    className={`mt-1 w-3 h-3 rounded-full shrink-0 ${(patient as any).consent_clinical_at ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                  />
-                  <div>
-                    <p className="font-medium text-slate-900">Atendimento Clínico (Obrigatório)</p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {(patient as any).consent_clinical_at
-                        ? `Aceito em ${new Date((patient as any).consent_clinical_at).toLocaleString('pt-BR')}`
-                        : 'Não aceito'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                  <div
-                    className={`mt-1 w-3 h-3 rounded-full shrink-0 ${(patient as any).consent_risk_at ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                  />
-                  <div>
-                    <p className="font-medium text-slate-900">Quebra de Sigilo / Risco</p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {(patient as any).consent_risk_at
-                        ? `Aceito em ${new Date((patient as any).consent_risk_at).toLocaleString('pt-BR')}`
-                        : 'Não aceito'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                  <div
-                    className={`mt-1 w-3 h-3 rounded-full shrink-0 ${(patient as any).consent_research_at ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                  />
-                  <div>
-                    <p className="font-medium text-slate-900">Pesquisa Científica (Opcional)</p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {(patient as any).consent_research_at
-                        ? `Aceito em ${new Date((patient as any).consent_research_at).toLocaleString('pt-BR')}`
-                        : 'Não aceito'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                  <div
-                    className={`mt-1 w-3 h-3 rounded-full shrink-0 ${(patient as any).consent_referral_at ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                  />
-                  <div>
-                    <p className="font-medium text-slate-900">Encaminhamento Clínico (Opcional)</p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {(patient as any).consent_referral_at
-                        ? `Aceito em ${new Date((patient as any).consent_referral_at).toLocaleString('pt-BR')}`
-                        : 'Não aceito'}
-                    </p>
-                  </div>
-                </div>
+            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <CardTitle>Status dos Consentimentos (LGPD)</CardTitle>
+                <CardDescription className="mt-1">
+                  A gestão é feita exclusivamente pelo paciente através de seu portal.
+                </CardDescription>
               </div>
-
-              {/* Edit Mode */}
-              <form
-                id="consent-management-form"
-                className="hidden space-y-6 bg-white p-6 border border-slate-200 rounded-xl"
-                onSubmit={async (e) => {
-                  e.preventDefault()
-                  const fd = new FormData(e.currentTarget)
-                  const pt = patient as any
-                  const data = {
-                    consent_clinical_at: fd.get('clinical')
-                      ? pt.consent_clinical_at || new Date().toISOString()
-                      : null,
-                    consent_risk_at: fd.get('risk')
-                      ? pt.consent_risk_at || new Date().toISOString()
-                      : null,
-                    consent_research_at: fd.get('research')
-                      ? pt.consent_research_at || new Date().toISOString()
-                      : null,
-                    consent_referral_at: fd.get('referral')
-                      ? pt.consent_referral_at || new Date().toISOString()
-                      : null,
-                    consent_form_signed: !!fd.get('clinical'),
-                    research_consent: !!fd.get('research'),
-                    portal_permissions: {
-                      ...(pt.portal_permissions || {}),
-                      life_protection_consent: !!fd.get('risk'),
-                    },
-                  }
-                  try {
-                    const pbModule = await import('@/lib/pocketbase/client')
-                    await pbModule.default.collection('patients').update(patient.id, data)
-                    window.location.reload()
-                  } catch (err) {
-                    alert('Erro ao salvar consentimentos.')
-                  }
-                }}
-              >
-                <div className="space-y-4">
-                  <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      name="clinical"
-                      defaultChecked={!!(patient as any).consent_clinical_at}
-                      required
-                      className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                    />
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
-                        Autorizo o armazenamento e tratamento dos meus dados para fins de
-                        atendimento clínico, conforme a LGPD.
-                      </span>
-                      <p className="text-xs text-rose-500 font-medium">* Obrigatório</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      name="risk"
-                      defaultChecked={!!(patient as any).consent_risk_at}
-                      className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                    />
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
-                        Autorizo a quebra de sigilo em caso de risco iminente à minha vida ou de
-                        terceiros, conforme previsto no Código de Ética do Psicólogo e na LGPD.
-                      </span>
-                      <p className="text-xs text-slate-500">
-                        * Obrigatório para uso do Diário de Sentimentos. Desativar isto bloqueará o
-                        recurso imediatamente.
-                      </p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      name="research"
-                      defaultChecked={!!(patient as any).consent_research_at}
-                      className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                    />
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
-                        Autorizo o uso anonimizado dos meus dados para fins de pesquisa científica.
-                      </span>
-                      <p className="text-xs text-slate-500">(Opcional)</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      name="referral"
-                      defaultChecked={!!(patient as any).consent_referral_at}
-                      className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                    />
-                    <div className="space-y-1 w-full">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
-                          Autorizo o compartilhamento dos meus dados anonimizados (idade, queixa
-                          principal, especialidade) com outros psicólogos para fins de
-                          encaminhamento clínico.
-                        </span>
-                        <Tooltip>
-                          <TooltipTrigger type="button" className="cursor-help">
-                            <Info className="h-4 w-4 text-slate-400" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            Isso permite que seu psicólogo compartilhe informações básicas do seu
-                            caso com outro profissional, caso necessário.
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <p className="text-xs text-slate-500">(Opcional)</p>
-                    </div>
-                  </label>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ConsentDisplayRow title="Atendimento Clínico" field="consent_clinical_at" />
+                <ConsentDisplayRow title="Quebra de Sigilo (Risco)" field="consent_risk_at" />
+                <ConsentDisplayRow title="Pesquisa Científica" field="consent_research_at" />
+                <ConsentDisplayRow title="Encaminhamento Clínico" field="consent_referral_at" />
+              </div>
+              {patient.primeiro_acesso_portal !== false && (
+                <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-lg text-amber-800 text-sm flex gap-3 items-start">
+                  <Info className="w-5 h-5 shrink-0 text-amber-500" />
+                  <p>
+                    O paciente ainda não acessou o portal para revisar e aceitar os termos de
+                    consentimento. O acesso clínico no painel pode estar restrito até a validação.
+                  </p>
                 </div>
-                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      document.getElementById('consent-management-form')?.classList.add('hidden')
-                      document.getElementById('consent-display')?.classList.remove('hidden')
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors cursor-pointer"
-                  >
-                    Salvar Alterações
-                  </button>
-                </div>
-              </form>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

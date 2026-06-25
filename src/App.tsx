@@ -13,6 +13,8 @@ import { SaasBlocker } from './components/saas/SaasBlocker'
 import PatientDiary from './pages/patient/PatientDiary'
 import PatientFinancial from './pages/patient/PatientFinancial'
 import PatientEvolutions from './pages/patient/PatientEvolutions'
+import PatientConsents from './pages/patient/PatientConsents'
+import { PatientPortalGuard } from './components/patient/PatientPortalGuard'
 import Login from './pages/Login'
 import ConfirmAppointment from './pages/ConfirmAppointment'
 import Signup from './pages/Signup'
@@ -89,11 +91,14 @@ const App = () => (
                     </Route>
 
                     <Route element={<RouteGuard allowedModules={['paciente_portal']} />}>
-                      <Route path="/patient-portal" element={<PatientDashboard />} />
-                      <Route path="/patient-portal/agenda" element={<PatientAgenda />} />
-                      <Route path="/patient-portal/diary" element={<PatientDiary />} />
-                      <Route path="/patient-portal/financial" element={<PatientFinancial />} />
-                      <Route path="/patient-portal/evolutions" element={<PatientEvolutions />} />
+                      <Route element={<PatientPortalGuard />}>
+                        <Route path="/patient-portal" element={<PatientDashboard />} />
+                        <Route path="/patient-portal/agenda" element={<PatientAgenda />} />
+                        <Route path="/patient-portal/diary" element={<PatientDiary />} />
+                        <Route path="/patient-portal/financial" element={<PatientFinancial />} />
+                        <Route path="/patient-portal/evolutions" element={<PatientEvolutions />} />
+                        <Route path="/patient-portal/consents" element={<PatientConsents />} />
+                      </Route>
                     </Route>
 
                     <Route element={<RouteGuard allowedModules={['gestao_clinica']} />}>

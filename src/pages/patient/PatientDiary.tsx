@@ -76,9 +76,7 @@ export default function PatientDiary() {
 
   if (loading) return <div>Carregando...</div>
 
-  const hasConsent =
-    !!(patient as any)?.consent_risk_at ||
-    patient?.portal_permissions?.life_protection_consent === true
+  const hasConsent = !!(patient as any)?.consent_risk_at
 
   if (!hasConsent) {
     return (

@@ -65,6 +65,12 @@ export function Sidebar({ collapsed }: SidebarProps) {
       icon: FileText,
       module: 'paciente_portal',
     },
+    {
+      name: '🔒 Meus Consentimentos',
+      path: '/patient-portal/consents',
+      icon: ShieldAlert,
+      module: 'paciente_portal',
+    },
     { name: 'Pacientes', path: '/patients', icon: Users, module: 'pacientes' },
     { name: 'Prontuário', path: '/notes', icon: FileText, module: 'prontuario' },
     { name: 'Financeiro', path: '/financeiro', icon: DollarSign, module: 'financeiro' },
