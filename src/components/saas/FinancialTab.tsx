@@ -1,79 +1,168 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { formatCurrency } from '@/lib/currency'
-import { AlertTriangle, Download } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/system/Badge'
+import pb from '@/lib/pocketbase/client'
+import { Skeleton } from '@/components/system/Skeleton'
+import { ErrorState } from '@/components/system/ErrorState'
+import { EmptyState } from '@/components/system/EmptyState'
 
 export function FinancialTab() {
-  const [cac, setCac] = useState(150)
-  const ticketMedio = 150
-  const churnRate = 0.025
-  const ltv = ticketMedio / churnRate
-  const ltvCacRatio = ltv / cac
+  const [records, setRecords] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        let financialData: any[] = []
+        let hasRecords = false
+
+        try {
+          const res = await pb.collection('financial_records').getFullList({
+            expand: 'professional,patient',
+            sort: '-created',
+          })
+          if (res.length > 0) {
+            hasRecords = true
+            financialData = res.map((r) => ({
+              id: r.id,
+              name: r.expand?.professional?.name || r.expand?.patient?.name || 'Desconhecido',
+              plan: r.type || 'Sessão',
+              value: r.value || r.total || 0,
+              status: r.status,
+              startDate: new Date(r.created).toLocaleDateString('pt-BR'),
+            }))
+          }
+        } catch (e) {
+          console.warn("Coleção 'financial_records' indisponível ou erro:", e)
+        }
+
+        if (!hasRecords) {
+          try {
+            const subs = await pb.collection('subscriptions').getFullList({
+              expand: 'plan,subscriber',
+              filter: "status = 'active' || status = 'trial'",
+              sort: '-created',
+            })
+
+            financialData = subs.map((s) => ({
+              id: s.id,
+              name: s.expand?.subscriber?.name || 'Assinante Desconhecido',
+              plan: s.expand?.plan?.name || 'Sem plano',
+              value: s.expand?.plan?.price || 0,
+              status: s.status === 'active' ? 'pago' : 'pendente',
+              startDate: new Date(s.created).toLocaleDateString('pt-BR'),
+            }))
+          } catch (e) {
+            console.warn("Coleção 'subscriptions' indisponível ou erro:", e)
+            if (financialData.length === 0) {
+              throw new Error('Indisponível')
+            }
+          }
+        }
+
+        if (!isMounted) return
+        setRecords(financialData)
+      } catch (err: any) {
+        if (isMounted) setError(err.message === 'Indisponível' ? 'Indisponível' : 'Erro interno')
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    loadData()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  if (error) {
+    return (
+      <ErrorState
+        title={error === 'Indisponível' ? 'Indisponível' : 'Erro de Carregamento'}
+        message={
+          error === 'Indisponível'
+            ? 'Os dados financeiros não estão disponíveis no momento.'
+            : 'Não foi possível carregar os registros financeiros.'
+        }
+      />
+    )
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Transações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton variant="table" count={5} />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium">Saúde Financeira do SaaS</h2>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Download className="w-4 h-4" /> Exportar CSV
-        </Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Ticket Médio Mensal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(ticketMedio)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Life Time Value (LTV)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{formatCurrency(ltv)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Estimativa (Ticket / Churn)</p>
-          </CardContent>
-        </Card>
-        <Card className={ltvCacRatio < 3 ? 'border-red-500 bg-red-50' : 'bg-green-50'}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Relação LTV / CAC</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-2xl font-bold ${ltvCacRatio < 3 ? 'text-red-600' : 'text-green-600'}`}
-            >
-              {ltvCacRatio.toFixed(1)}x
-            </div>
-            {ltvCacRatio < 3 && (
-              <p className="text-xs text-red-500 flex items-center mt-2 font-medium">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Alerta: Ideal {'>'} 3x para sustentabilidade
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="max-w-md">
+      <Card>
         <CardHeader>
-          <CardTitle>Configuração de Métricas</CardTitle>
+          <CardTitle>Histórico de Transações</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Custo de Aquisição de Clientes (CAC) - R$</Label>
-            <Input type="number" value={cac} onChange={(e) => setCac(Number(e.target.value))} />
-          </div>
-          <p className="text-sm text-gray-500">
-            O valor inserido acima atualizará automaticamente o indicador LTV/CAC em tempo real.
-          </p>
+        <CardContent>
+          {records.length === 0 ? (
+            <EmptyState
+              title="Nenhum registro financeiro encontrado."
+              description="As transações financeiras e pagamentos de assinaturas aparecerão aqui."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Plano / Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data de início</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {records.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="capitalize">{r.plan}</TableCell>
+                    <TableCell>{formatCurrency(r.value)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          r.status === 'pago' || r.status === 'active'
+                            ? 'success'
+                            : r.status === 'pendente'
+                              ? 'warning'
+                              : 'default'
+                        }
+                      >
+                        {r.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.startDate}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
