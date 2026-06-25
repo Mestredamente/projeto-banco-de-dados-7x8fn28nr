@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertTriangle } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -113,8 +115,11 @@ export function ReferralDialog({
     }
   }, [open, user?.id])
 
+  const hasConsent = !!patient?.consent_referral_at
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!hasConsent) return
     if (!destination || !specialty)
       return toast({ title: 'Preencha os campos obrigatórios', variant: 'destructive' })
 
@@ -145,6 +150,15 @@ export function ReferralDialog({
             <DialogTitle>Encaminhar Paciente</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {!hasConsent && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Este paciente não autorizou o compartilhamento de dados. Solicite o consentimento
+                  antes de encaminhar.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label>Especialidade Necessária</Label>
               <Select value={specialty} onValueChange={setSpecialty}>
@@ -190,7 +204,7 @@ export function ReferralDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !hasConsent}>
               {loading ? 'Enviando...' : 'Confirmar Encaminhamento'}
             </Button>
           </DialogFooter>

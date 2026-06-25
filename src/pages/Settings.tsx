@@ -32,7 +32,18 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
-import { ShieldCheck, AlertTriangle } from 'lucide-react'
+import {
+  ShieldCheck,
+  AlertTriangle,
+  Plus,
+  X,
+  ExternalLink,
+  CheckCircle2,
+  DollarSign,
+  MessageCircle,
+  Mail,
+} from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
@@ -53,21 +64,19 @@ const DAYS = [
 
 const DEFAULT_TRIGGERS = {
   lembrete: true,
+  cobranca: true,
   confirmacao: true,
-  falta: true,
-  cobranca_sessao: true,
-  cobranca_mensal: true,
-  atraso: false,
-  feriado: false,
-  reagendamento: true,
+  portal_full_access: true,
+  portal_active: true,
+  auto_detect_crisis: true,
+  channel: 'ambos',
+  custom_keywords: ['suicídio', 'matar', 'morrer', 'sumir', 'automutilação', 'cortar', 'sangrar'],
 }
 
 const DEFAULT_TEMPLATES = {
-  lembrete:
-    'Olá [PACIENTE], sua sessão com [PSICÓLOGO] é amanhã às [HORÁRIO]. Confirme aqui: [LINK]',
-  confirmacao: 'Sessão confirmada para [DATA] às [HORÁRIO]. Até lá!',
-  falta: 'Você faltou à sessão de [DATA] às [HORÁRIO]. Para reagendar, acesse o portal.',
-  cobranca: 'Sessão de [DATA] no valor de R$ [VALOR]. Pagamento via [METODO]. Chave: [PIX]',
+  lembrete: '[PACIENTE], lembre-se da sua sessão amanhã às [HORÁRIO].',
+  cobranca: '[PACIENTE], sua cobrança de [VALOR] vence em [DATA].',
+  confirmacao: '[PACIENTE], confirme sua sessão de [DATA] às [HORÁRIO].',
 }
 
 export default function Settings() {
@@ -98,10 +107,11 @@ export default function Settings() {
   const [notificationSettings, setNotificationSettings] = useState({
     id: '',
     triggers: DEFAULT_TRIGGERS,
-    reminder_time: '10:00',
+    reminder_time: '24',
     templates: DEFAULT_TEMPLATES,
   })
-  const [pendingBillings, setPendingBillings] = useState<any[]>([])
+
+  const [newKeyword, setNewKeyword] = useState('')
   const [notificationLogs, setNotificationLogs] = useState<any[]>([])
   const [simulateCrisisOpen, setSimulateCrisisOpen] = useState(false)
   const [simulatedText, setSimulatedText] = useState('')
@@ -143,21 +153,14 @@ export default function Settings() {
       setNotificationSettings({
         id: res.id,
         triggers: { ...DEFAULT_TRIGGERS, ...(res.triggers || {}) },
-        reminder_time: res.reminder_time || '10:00',
+        reminder_time: res.reminder_time || '24',
         templates: { ...DEFAULT_TEMPLATES, ...(res.templates || {}) },
       })
     } catch (err) {
-      // Usar os defaults
+      // Keep defaults
     }
 
     try {
-      const billings = await pb.collection('financial_records').getList(1, 10, {
-        filter: `status="pendente" && professional="${user.id}"`,
-        expand: 'patient',
-        sort: '-created',
-      })
-      setPendingBillings(billings.items)
-
       const logs = await pb.collection('notifications').getList(1, 10, {
         filter: `profile="${user.id}"`,
         expand: 'patient',
@@ -201,21 +204,38 @@ export default function Settings() {
     setSchedule(newSch)
   }
 
-  const handleSendBilling = async (recordId: string) => {
-    try {
-      await pb.send('/backend/v1/notifications/send-billing', {
-        method: 'POST',
-        body: JSON.stringify({ record_id: recordId }),
-      })
-      toast({ title: 'Sucesso', description: 'Notificação de cobrança enviada.' })
-      loadNotificationData()
-    } catch (error) {
-      toast({ title: 'Erro', description: 'Falha ao enviar notificação.', variant: 'destructive' })
+  const handleAddKeyword = () => {
+    if (newKeyword.trim()) {
+      setNotificationSettings((p) => ({
+        ...p,
+        triggers: {
+          ...p.triggers,
+          custom_keywords: [...(p.triggers.custom_keywords || []), newKeyword.trim().toLowerCase()],
+        },
+      }))
+      setNewKeyword('')
     }
+  }
+
+  const handleRemoveKeyword = (kw: string) => {
+    setNotificationSettings((p) => ({
+      ...p,
+      triggers: {
+        ...p.triggers,
+        custom_keywords: (p.triggers.custom_keywords || []).filter((k: string) => k !== kw),
+      },
+    }))
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const reminderNum = parseInt(notificationSettings.reminder_time, 10)
+    if (isNaN(reminderNum) || reminderNum < 0) {
+      toast({ title: 'Erro', description: 'Horário de disparo inválido.', variant: 'destructive' })
+      return
+    }
+
     setLoading(true)
     try {
       const payload = {
@@ -242,7 +262,7 @@ export default function Settings() {
       const nsPayload = {
         user: user.id,
         triggers: notificationSettings.triggers,
-        reminder_time: notificationSettings.reminder_time,
+        reminder_time: String(reminderNum),
         templates: notificationSettings.templates,
       }
 
@@ -267,24 +287,8 @@ export default function Settings() {
 
   const runSimulation = () => {
     const content = simulatedText.toLowerCase()
-    const systemTriggers = [
-      'vou morrer',
-      'quero morrer',
-      'sumir',
-      'me matar',
-      'suicídio',
-      'suicida',
-      'automutilação',
-      'cortar',
-      'machucar',
-      'sangrar',
-      'não aguento mais',
-      'não quero mais viver',
-      'acabar com tudo',
-      'violento',
-      'agressivo',
-      'matar alguém',
-    ]
+    const systemTriggers =
+      notificationSettings.triggers.custom_keywords || DEFAULT_TRIGGERS.custom_keywords
     const normalizedContent = ' ' + content.replace(/[.,!?\n\r]/g, ' ') + ' '
     let detectedTrigger = null
     for (const trigger of systemTriggers) {
@@ -325,29 +329,44 @@ export default function Settings() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-10">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Configurações</h1>
-        <p className="text-gray-500 mt-1">Gerencie seu perfil profissional, conta e automações.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Configurações do Sistema
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Gerencie seu perfil profissional, preferências de comunicação e integrações.
+        </p>
       </div>
 
-      <Tabs defaultValue="geral" className="max-w-4xl">
-        <TabsList className="mb-4 bg-gray-100 dark:bg-gray-800 flex flex-wrap h-auto">
-          <TabsTrigger value="geral">Geral</TabsTrigger>
-          <TabsTrigger value="profissional">Profissional</TabsTrigger>
-          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+      <Tabs defaultValue="perfil" className="max-w-5xl">
+        <TabsList className="mb-6 bg-gray-100 dark:bg-gray-800 flex flex-wrap h-auto">
+          <TabsTrigger value="perfil">Perfil</TabsTrigger>
           <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
+          <TabsTrigger value="portal">Portal do Paciente</TabsTrigger>
+          <TabsTrigger value="seguranca">Crise e Segurança</TabsTrigger>
+          <TabsTrigger value="integracoes">Integrações</TabsTrigger>
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           <TabsTrigger value="assinatura">Assinatura</TabsTrigger>
         </TabsList>
 
         <form onSubmit={handleSave}>
-          <TabsContent value="geral">
+          <TabsContent value="perfil" className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Informações Gerais</CardTitle>
-                <CardDescription>Seus dados básicos de acesso.</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Meu Perfil</CardTitle>
+                  <CardDescription>Informações básicas e dados profissionais.</CardDescription>
+                </div>
+                {user?.role === 'admin_clinica' && (
+                  <Link to="/clinic-profile">
+                    <Button variant="outline" type="button" className="gap-2">
+                      Perfil da Clínica <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                )}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nome Completo</Label>
@@ -359,7 +378,7 @@ export default function Settings() {
                       name="email"
                       value={formData.email}
                       disabled
-                      className="bg-gray-100 cursor-not-allowed"
+                      className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                     />
                   </div>
                   <div className="space-y-2">
@@ -371,18 +390,8 @@ export default function Settings() {
                     <Input name="phone" value={formData.phone} onChange={handleChange} />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="profissional">
-            <Card>
-              <CardHeader>
-                <CardTitle>Perfil Profissional</CardTitle>
-                <CardDescription>Detalhes da sua atuação clínica.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-800 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Registro (CRP)</Label>
                     <Input
@@ -410,21 +419,21 @@ export default function Settings() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Especializações (separadas por vírgula)</Label>
-                  <Input
-                    name="specializations"
-                    value={formData.specializations}
-                    onChange={handleChange}
-                    placeholder="Ex: TCC, Psicanálise, Terapia Infantil"
-                  />
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Especializações (separadas por vírgula)</Label>
+                    <Input
+                      name="specializations"
+                      value={formData.specializations}
+                      onChange={handleChange}
+                      placeholder="Ex: TCC, Psicanálise, Terapia Infantil"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-4 pt-4 border-t">
-                  <div className="flex justify-between items-center">
+                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <Label className="text-base font-semibold">Grade de Horários</Label>
-                    <div className="space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         variant="outline"
@@ -455,7 +464,7 @@ export default function Settings() {
                     {DAYS.map((day) => (
                       <div
                         key={day.key}
-                        className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 p-2 rounded"
+                        className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded"
                       >
                         <Checkbox
                           checked={schedule[day.key]?.active || false}
@@ -500,12 +509,439 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="financeiro">
+          <TabsContent value="notificacoes" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Comunicações Automáticas</CardTitle>
+                <CardDescription>
+                  Configure envios de lembretes, cobranças e confirmações de consultas.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                    <div>
+                      <span className="text-sm font-medium block">Lembretes de Sessão</span>
+                      <span className="text-xs text-gray-500">
+                        Enviado antes de cada atendimento
+                      </span>
+                    </div>
+                    <Switch
+                      checked={notificationSettings.triggers.lembrete ?? true}
+                      onCheckedChange={(c) =>
+                        setNotificationSettings((p) => ({
+                          ...p,
+                          triggers: { ...p.triggers, lembrete: c },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                    <div>
+                      <span className="text-sm font-medium block">Avisos de Cobrança</span>
+                      <span className="text-xs text-gray-500">Notifica sobre vencimentos</span>
+                    </div>
+                    <Switch
+                      checked={notificationSettings.triggers.cobranca ?? true}
+                      onCheckedChange={(c) =>
+                        setNotificationSettings((p) => ({
+                          ...p,
+                          triggers: { ...p.triggers, cobranca: c },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                    <div>
+                      <span className="text-sm font-medium block">Pedidos de Confirmação</span>
+                      <span className="text-xs text-gray-500">
+                        Solicita confirmação de presença
+                      </span>
+                    </div>
+                    <Switch
+                      checked={notificationSettings.triggers.confirmacao ?? true}
+                      onCheckedChange={(c) =>
+                        setNotificationSettings((p) => ({
+                          ...p,
+                          triggers: { ...p.triggers, confirmacao: c },
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <div className="space-y-2">
+                    <Label>Horário de disparo (horas de antecedência)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={notificationSettings.reminder_time}
+                      onChange={(e) =>
+                        setNotificationSettings((p) => ({ ...p, reminder_time: e.target.value }))
+                      }
+                      className="w-full max-w-[200px]"
+                    />
+                    <p className="text-xs text-gray-500">Ex: 24 (um dia antes da sessão)</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Canal Padrão</Label>
+                    <Select
+                      value={notificationSettings.triggers.channel || 'ambos'}
+                      onValueChange={(v) =>
+                        setNotificationSettings((p) => ({
+                          ...p,
+                          triggers: { ...p.triggers, channel: v },
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="w-full max-w-[250px]">
+                        <SelectValue placeholder="Selecione o canal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                        <SelectItem value="email">E-mail</SelectItem>
+                        <SelectItem value="ambos">Ambos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <h3 className="text-lg font-medium">Templates de Mensagem</h3>
+                  <p className="text-sm text-gray-500">
+                    Variáveis: <Badge variant="outline">[PACIENTE]</Badge>{' '}
+                    <Badge variant="outline">[PSICÓLOGO]</Badge>{' '}
+                    <Badge variant="outline">[HORÁRIO]</Badge>{' '}
+                    <Badge variant="outline">[DATA]</Badge> <Badge variant="outline">[VALOR]</Badge>
+                  </p>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Lembrete de Sessão</Label>
+                      <Textarea
+                        value={
+                          notificationSettings.templates.lembrete || DEFAULT_TEMPLATES.lembrete
+                        }
+                        onChange={(e) =>
+                          setNotificationSettings((p) => ({
+                            ...p,
+                            templates: { ...p.templates, lembrete: e.target.value },
+                          }))
+                        }
+                        rows={2}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Aviso de Cobrança</Label>
+                      <Textarea
+                        value={
+                          notificationSettings.templates.cobranca || DEFAULT_TEMPLATES.cobranca
+                        }
+                        onChange={(e) =>
+                          setNotificationSettings((p) => ({
+                            ...p,
+                            templates: { ...p.templates, cobranca: e.target.value },
+                          }))
+                        }
+                        rows={2}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Pedido de Confirmação</Label>
+                      <Textarea
+                        value={
+                          notificationSettings.templates.confirmacao ||
+                          DEFAULT_TEMPLATES.confirmacao
+                        }
+                        onChange={(e) =>
+                          setNotificationSettings((p) => ({
+                            ...p,
+                            templates: { ...p.templates, confirmacao: e.target.value },
+                          }))
+                        }
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Logs de Notificações</CardTitle>
+                <CardDescription>
+                  Últimas notificações enviadas pelo sistema para seus pacientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {notificationLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-4">
+                          Nenhum log encontrado.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      notificationLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell>{format(new Date(log.created), 'dd/MM/yyyy HH:mm')}</TableCell>
+                          <TableCell>{log.expand?.patient?.name}</TableCell>
+                          <TableCell className="capitalize">{log.type.replace('_', ' ')}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={log.status === 'Erro' ? 'destructive' : 'default'}
+                              className={
+                                log.status === 'Entregue' ? 'bg-green-100 text-green-800' : ''
+                              }
+                            >
+                              {log.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="portal" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Controles do Portal do Paciente</CardTitle>
+                <CardDescription>
+                  Defina padrões globais de visibilidade e acesso para os seus pacientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between border p-4 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                  <div className="space-y-0.5 max-w-[80%]">
+                    <Label className="text-base">
+                      Novos pacientes começam com todas as abas liberadas?
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      Se ativado, ao cadastrar um paciente, ele já terá acesso automático às áreas
+                      de diário, financeiro e evoluções no portal dele.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.triggers.portal_full_access ?? true}
+                    onCheckedChange={(c) =>
+                      setNotificationSettings((p) => ({
+                        ...p,
+                        triggers: { ...p.triggers, portal_full_access: c },
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between border p-4 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                  <div className="space-y-0.5 max-w-[80%]">
+                    <Label className="text-base">Ativar/desativar portal</Label>
+                    <p className="text-sm text-gray-500">
+                      Chave mestre para habilitar ou suspender o acesso ao portal para toda a sua
+                      base de pacientes simultaneamente.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.triggers.portal_active ?? true}
+                    onCheckedChange={(c) =>
+                      setNotificationSettings((p) => ({
+                        ...p,
+                        triggers: { ...p.triggers, portal_active: c },
+                      }))
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="seguranca" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Crise e Segurança</CardTitle>
+                <CardDescription>
+                  Configure alertas e palavras-gatilho para o Prontuário Inteligente e Diário de
+                  Sentimentos.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between border p-4 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                  <div className="space-y-0.5 max-w-[80%]">
+                    <Label className="text-base">Ativar detecção automática</Label>
+                    <p className="text-sm text-gray-500">
+                      A IA fará varreduras diárias em busca de indícios de risco nas anotações e
+                      sentimentos reportados.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.triggers.auto_detect_crisis ?? true}
+                    onCheckedChange={(c) =>
+                      setNotificationSettings((p) => ({
+                        ...p,
+                        triggers: { ...p.triggers, auto_detect_crisis: c },
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-base">Palavras-gatilho monitoradas</Label>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Adicione ou remova termos que o sistema deve considerar como sinais de alerta
+                    grave.
+                  </p>
+
+                  <div className="flex gap-2 max-w-sm mb-4">
+                    <Input
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      placeholder="Ex: machucar"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddKeyword()
+                        }
+                      }}
+                    />
+                    <Button type="button" onClick={handleAddKeyword}>
+                      <Plus className="w-4 h-4 mr-2" /> Adicionar
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 p-4 border rounded-md min-h-[100px] bg-white dark:bg-gray-900">
+                    {(notificationSettings.triggers.custom_keywords || []).map((kw: string) => (
+                      <Badge
+                        key={kw}
+                        variant="secondary"
+                        className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        {kw}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKeyword(kw)}
+                          className="text-gray-400 hover:text-red-500 focus:outline-none ml-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                    {(!notificationSettings.triggers.custom_keywords ||
+                      notificationSettings.triggers.custom_keywords.length === 0) && (
+                      <span className="text-sm text-gray-400 italic flex items-center h-full">
+                        Nenhuma palavra-gatilho configurada.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-4">
+                  <h3 className="text-lg font-medium flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-teal-600" /> Simulação de Alerta
+                  </h3>
+                  <p className="text-sm text-gray-500 max-w-2xl">
+                    Teste o sistema de detecção utilizando o conjunto de palavras-gatilho
+                    configurado acima, garantindo que os alertas estão sensíveis aos cenários
+                    desejados.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-teal-200 text-teal-700 hover:bg-teal-50 mt-2"
+                    onClick={() => setSimulateCrisisOpen(true)}
+                  >
+                    Abrir Simulador
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="integracoes" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Painel de Integrações</CardTitle>
+                <CardDescription>
+                  Visão geral dos serviços externos conectados ao seu ambiente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between border p-4 rounded-md bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white dark:bg-gray-900 rounded-full shadow-sm">
+                      <DollarSign className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-lg">Mercado Pago / Asaas</p>
+                      <p className="text-sm text-gray-500">Processamento de pagamentos e boletos</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm font-medium border border-green-200">
+                    <CheckCircle2 className="w-4 h-4" /> Conectado
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border p-4 rounded-md bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white dark:bg-gray-900 rounded-full shadow-sm">
+                      <MessageCircle className="w-6 h-6 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-lg">WhatsApp API</p>
+                      <p className="text-sm text-gray-500">Mensageria instantânea e bots</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm font-medium border border-green-200">
+                    <CheckCircle2 className="w-4 h-4" /> Conectado
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border p-4 rounded-md bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white dark:bg-gray-900 rounded-full shadow-sm">
+                      <Mail className="w-6 h-6 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-lg">E-mail (SMTP/SendGrid)</p>
+                      <p className="text-sm text-gray-500">Notificações e faturas</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm font-medium border border-green-200">
+                    <CheckCircle2 className="w-4 h-4" /> Configurado
+                  </div>
+                </div>
+
+                <Alert className="mt-6 bg-blue-50 border-blue-200 text-blue-800">
+                  <AlertDescription>
+                    Nesta versão, as integrações nativas são gerenciadas globalmente pelo
+                    administrador do sistema. O seu status reflete a conectividade atual da
+                    plataforma Syntra.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="financeiro" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Dados Financeiros</CardTitle>
                 <CardDescription>
-                  Informações para recebimentos de honorários (opcional).
+                  Informações para recebimentos de honorários via repasses.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -570,200 +1006,7 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="notificacoes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurações de Notificações</CardTitle>
-                <CardDescription>
-                  Gerencie gatilhos, horários e templates das suas comunicações automáticas.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Gatilhos de Envio</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.keys(DEFAULT_TRIGGERS).map((trigger) => (
-                      <div
-                        key={trigger}
-                        className="flex items-center justify-between border p-3 rounded-md border-gray-200 dark:border-gray-800"
-                      >
-                        <span className="capitalize text-sm font-medium">
-                          {trigger.replace('_', ' ')}
-                        </span>
-                        <Switch
-                          checked={
-                            notificationSettings.triggers[trigger as keyof typeof DEFAULT_TRIGGERS]
-                          }
-                          onCheckedChange={(c) =>
-                            setNotificationSettings((p) => ({
-                              ...p,
-                              triggers: { ...p.triggers, [trigger]: c },
-                            }))
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Horário padrão para Lembretes Automáticos</Label>
-                  <Input
-                    type="time"
-                    value={notificationSettings.reminder_time}
-                    onChange={(e) =>
-                      setNotificationSettings((p) => ({ ...p, reminder_time: e.target.value }))
-                    }
-                    className="w-32"
-                  />
-                </div>
-
-                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                  <h3 className="text-lg font-medium flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-red-600" /> Simulação de Alerta de Crise
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Teste o sistema de detecção de gatilhos do Diário de Sentimentos sem gerar
-                    registros reais ou notificações.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-red-200 text-red-700 hover:bg-red-50"
-                    onClick={() => setSimulateCrisisOpen(true)}
-                  >
-                    Simular Alerta
-                  </Button>
-                </div>
-
-                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                  <h3 className="text-lg font-medium">Templates de Mensagem</h3>
-                  <p className="text-sm text-gray-500">
-                    Variáveis disponíveis: [PACIENTE], [PSICÓLOGO], [HORÁRIO], [DATA], [LINK],
-                    [VALOR], [METODO], [PIX]
-                  </p>
-
-                  {Object.keys(DEFAULT_TEMPLATES).map((tmpl) => (
-                    <div key={tmpl} className="space-y-2">
-                      <Label className="capitalize">{tmpl}</Label>
-                      <Textarea
-                        value={
-                          notificationSettings.templates[tmpl as keyof typeof DEFAULT_TEMPLATES]
-                        }
-                        onChange={(e) =>
-                          setNotificationSettings((p) => ({
-                            ...p,
-                            templates: { ...p.templates, [tmpl]: e.target.value },
-                          }))
-                        }
-                        rows={2}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Fluxo de Aprovação de Cobrança</CardTitle>
-                <CardDescription>
-                  Faturas pendentes que exigem sua aprovação para envio.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Paciente</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead className="text-right">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingBillings.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-4">
-                          Nenhuma cobrança pendente.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      pendingBillings.map((b) => (
-                        <TableRow key={b.id}>
-                          <TableCell className="font-medium">{b.expand?.patient?.name}</TableCell>
-                          <TableCell>
-                            {b.due_date ? format(new Date(b.due_date), 'dd/MM/yyyy') : '-'}
-                          </TableCell>
-                          <TableCell>R$ {b.value?.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              type="button"
-                              onClick={() => handleSendBilling(b.id)}
-                              className="bg-teal-600 hover:bg-teal-700"
-                            >
-                              Aprovar Envio
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Logs de Notificações</CardTitle>
-                <CardDescription>
-                  Últimas notificações enviadas pelo sistema para seus pacientes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Paciente</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {notificationLogs.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-4">
-                          Nenhum log encontrado.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      notificationLogs.map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell>{format(new Date(log.created), 'dd/MM/yyyy HH:mm')}</TableCell>
-                          <TableCell>{log.expand?.patient?.name}</TableCell>
-                          <TableCell className="capitalize">{log.type.replace('_', ' ')}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={log.status === 'Erro' ? 'destructive' : 'default'}
-                              className={
-                                log.status === 'Entregue' ? 'bg-green-100 text-green-800' : ''
-                              }
-                            >
-                              {log.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="assinatura">
+          <TabsContent value="assinatura" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-red-600">Cancelar Assinatura</CardTitle>
@@ -781,11 +1024,12 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-8 flex justify-end sticky bottom-6 bg-white dark:bg-gray-900 p-4 shadow-lg rounded-xl border border-gray-100 dark:border-gray-800 z-10">
             <Button
               type="submit"
               disabled={loading}
-              className="bg-teal-600 hover:bg-teal-700 text-white px-6"
+              className="bg-teal-600 hover:bg-teal-700 text-white px-8"
+              size="lg"
             >
               {loading ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
@@ -822,7 +1066,8 @@ export default function Settings() {
           <DialogHeader>
             <DialogTitle>Simulador de Gatilho</DialogTitle>
             <DialogDescription>
-              Digite um texto para testar o detector de crises do Diário de Sentimentos.
+              Digite um texto para testar o detector de crises com base nas palavras-gatilho
+              cadastradas.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -837,7 +1082,10 @@ export default function Settings() {
                 <AlertTriangle className="h-5 w-5 text-white" />
                 <AlertTitle className="font-bold flex items-center gap-2">
                   🚨 ALERTA DE CRISE
-                  <Badge variant="secondary" className="bg-white/20 text-white text-[10px]">
+                  <Badge
+                    variant="secondary"
+                    className="bg-white/20 text-white text-[10px] border-white/20"
+                  >
                     🔬 SIMULAÇÃO
                   </Badge>
                 </AlertTitle>

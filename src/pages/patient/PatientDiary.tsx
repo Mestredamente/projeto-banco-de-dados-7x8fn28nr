@@ -76,16 +76,22 @@ export default function PatientDiary() {
 
   if (loading) return <div>Carregando...</div>
 
-  const hasConsent = patient?.portal_permissions?.life_protection_consent === true
+  const hasConsent =
+    !!(patient as any)?.consent_risk_at ||
+    patient?.portal_permissions?.life_protection_consent === true
 
   if (!hasConsent) {
     return (
-      <div className="space-y-6 animate-fade-in text-center p-12">
-        <HeartPulse className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-700">Recurso Desativado</h2>
-        <p className="text-gray-500 max-w-md mx-auto mt-2">
-          O Diário de Sentimentos está desativado. É necessário autorizar o Termo de Proteção à Vida
-          (LGPD) junto ao seu profissional para utilizar esta ferramenta.
+      <div className="space-y-6 animate-fade-in text-center p-12 bg-white rounded-xl shadow-sm border border-slate-100">
+        <HeartPulse className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-slate-800">Recurso Desativado</h2>
+        <p className="text-slate-500 max-w-md mx-auto mt-3 leading-relaxed">
+          O Diário de Sentimentos está desativado. Para utilizar esta ferramenta, é necessário
+          fornecer o consentimento de <strong>Quebra de Sigilo em caso de risco iminente</strong>{' '}
+          (Termo de Proteção à Vida).
+        </p>
+        <p className="text-sm text-slate-400 mt-4">
+          Acesse seu perfil ou converse com seu profissional para gerenciar seus consentimentos.
         </p>
       </div>
     )

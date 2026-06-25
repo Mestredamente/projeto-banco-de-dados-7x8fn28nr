@@ -3,27 +3,36 @@ routerAdd(
   '/backend/v1/audit/view',
   (e) => {
     const body = e.requestInfo().body || {}
-    const recordId = body.record_id
-    const tableName = body.table_name
+    const record_id = body.record_id
+    const table_name = body.table_name || 'patients'
+    const user = e.auth
 
-    if (!recordId || !tableName) return e.badRequestError('Missing record_id or table_name')
+    if (!user || !record_id) {
+      return e.badRequestError('Missing user or record_id')
+    }
 
-    const actorId = e.auth?.id || ''
-    if (!actorId) return e.unauthorizedError('Auth required')
+    const auditCol = $app.findCollectionByNameOrId('audit_logs')
+    const record = new Record(auditCol)
+
+    record.set('actor', user.id)
+    record.set('action', 'Visualizou prontuário')
+    record.set('table_name', table_name)
+    record.set('record_id', record_id)
+    record.set('ip_address', e.request.remoteAddr || '')
 
     try {
-      const auditLogs = $app.findCollectionByNameOrId('audit_logs')
-      const log = new Record(auditLogs)
-      log.set('actor', actorId)
-      log.set('action', 'VIEW')
-      log.set('table_name', tableName)
-      log.set('record_id', recordId)
-      log.set('ip_address', e.request.remoteAddr || '')
-      log.set('user_agent', e.request.header.get('User-Agent') || '')
-      $app.saveNoValidate(log)
+      const patient = $app.findRecordById('patients', record_id)
+      record.set('new_data', {
+        patient_name: patient.getString('name'),
+        actor_name: user.getString('name'),
+      })
     } catch (err) {
-      $app.logger().error('Audit log VIEW failed', 'error', err?.message)
+      record.set('new_data', {
+        actor_name: user.getString('name'),
+      })
     }
+
+    $app.save(record)
 
     return e.json(200, { success: true })
   },

@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import pb from '@/lib/pocketbase/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import {
   PhoneCall,
   HeartPulse,
@@ -8,11 +11,33 @@ import {
   Calendar as CalendarIcon,
   DollarSign,
   FileText,
+  ClipboardList,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function PatientDashboard() {
   const { user } = useAuth()
+  const [pendingAssignments, setPendingAssignments] = useState<any[]>([])
+
+  useEffect(() => {
+    if (user) {
+      const fetchAssignments = async () => {
+        try {
+          const now = new Date().toISOString()
+          const result = await pb.collection('questionnaire_assignments').getList(1, 50, {
+            filter: `status = "pendente" && due_date >= "${now}"`,
+            expand: 'questionnaire',
+            sort: '-created',
+          })
+          setPendingAssignments(result.items)
+        } catch (error) {
+          console.error('Failed to fetch questionnaire assignments:', error)
+        }
+      }
+
+      fetchAssignments()
+    }
+  }, [user])
 
   return (
     <div className="space-y-6 animate-fade-in p-6 max-w-5xl mx-auto pb-12">
@@ -22,6 +47,28 @@ export default function PatientDashboard() {
         </h1>
         <p className="text-muted-foreground">Bem-vindo ao seu portal.</p>
       </div>
+
+      {pendingAssignments.length > 0 && (
+        <div className="space-y-3">
+          {pendingAssignments.map((assignment) => (
+            <Alert key={assignment.id} className="border-l-4 border-l-amber-500 bg-amber-50/50">
+              <ClipboardList className="h-5 w-5 text-amber-600" />
+              <AlertTitle className="text-amber-800 font-semibold">
+                Nova Escala Disponível
+              </AlertTitle>
+              <AlertDescription className="text-amber-700 mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span>
+                  📋 Você tem uma escala para preencher:{' '}
+                  <strong>{assignment.expand?.questionnaire?.title}</strong>
+                </span>
+                <Link to="#" className="text-amber-700 font-medium underline shrink-0">
+                  Preencher agora
+                </Link>
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      )}
 
       <Tabs defaultValue="inicio">
         <TabsList className="bg-gray-100 dark:bg-gray-800">

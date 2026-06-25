@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { ArrowLeft, User, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, User, ShieldCheck, Info } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default function PatientForm() {
   const { id } = useParams()
@@ -209,30 +210,7 @@ export default function PatientForm() {
 
             {formData.portal_permissions.diary && (
               <div className="p-4 bg-red-50 rounded-lg border border-red-100 space-y-4 animate-fade-in-down">
-                <div className="flex items-start space-x-3">
-                  <Switch
-                    checked={formData.portal_permissions.life_protection_consent}
-                    onCheckedChange={(v) =>
-                      setFormData({
-                        ...formData,
-                        portal_permissions: {
-                          ...formData.portal_permissions,
-                          life_protection_consent: v,
-                        },
-                      })
-                    }
-                  />
-                  <div className="space-y-1">
-                    <Label className="text-sm font-bold text-red-900">
-                      Termo de Proteção à Vida (Obrigatório)
-                    </Label>
-                    <p className="text-xs text-red-700 leading-relaxed">
-                      "Autorizo a quebra de sigilo em caso de risco iminente à minha vida ou de
-                      terceiros, conforme previsto no Código de Ética do Psicólogo e na LGPD."
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-2 pl-12">
+                <div className="space-y-2">
                   <Label className="text-sm text-red-900">
                     Palavras-Gatilho Personalizadas (opcional)
                   </Label>
@@ -293,7 +271,117 @@ export default function PatientForm() {
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="space-y-4 p-6 bg-slate-50 rounded-lg border border-slate-200 mt-6">
+              <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2">
+                Gestão de Consentimentos (LGPD)
+              </h3>
+
+              <label className="flex items-start space-x-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  required
+                  checked={!!(formData as any).consent_clinical_at}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      consent_clinical_at: e.target.checked ? new Date().toISOString() : null,
+                      consent_form_signed: e.target.checked,
+                    } as any)
+                  }
+                />
+                <div className="space-y-1 leading-snug">
+                  <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
+                    Autorizo o armazenamento e tratamento dos meus dados para fins de atendimento
+                    clínico, conforme a LGPD.
+                  </span>
+                  <p className="text-xs text-red-500 font-medium">* Obrigatório</p>
+                </div>
+              </label>
+
+              <label className="flex items-start space-x-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  checked={!!(formData as any).consent_risk_at}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      consent_risk_at: e.target.checked ? new Date().toISOString() : null,
+                      portal_permissions: {
+                        ...formData.portal_permissions,
+                        life_protection_consent: e.target.checked,
+                      },
+                    } as any)
+                  }
+                />
+                <div className="space-y-1 leading-snug">
+                  <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
+                    Autorizo a quebra de sigilo em caso de risco iminente à minha vida ou de
+                    terceiros, conforme previsto no Código de Ética do Psicólogo e na LGPD.
+                  </span>
+                  <p className="text-xs text-slate-500">
+                    * Obrigatório para uso do Diário de Sentimentos
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start space-x-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  checked={!!(formData as any).consent_research_at}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      consent_research_at: e.target.checked ? new Date().toISOString() : null,
+                      research_consent: e.target.checked,
+                    } as any)
+                  }
+                />
+                <div className="space-y-1 leading-snug">
+                  <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
+                    Autorizo o uso anonimizado dos meus dados para fins de pesquisa científica.
+                  </span>
+                  <p className="text-xs text-slate-500">(Opcional)</p>
+                </div>
+              </label>
+
+              <label className="flex items-start space-x-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  checked={!!(formData as any).consent_referral_at}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      consent_referral_at: e.target.checked ? new Date().toISOString() : null,
+                    } as any)
+                  }
+                />
+                <div className="space-y-1 leading-snug w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
+                      Autorizo o compartilhamento dos meus dados anonimizados (idade, queixa
+                      principal, especialidade) com outros psicólogos para fins de encaminhamento
+                      clínico.
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger type="button" className="cursor-help">
+                        <Info className="h-4 w-4 text-slate-400" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        Isso permite que seu psicólogo compartilhe informações básicas do seu caso
+                        com outro profissional, caso necessário.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <p className="text-xs text-slate-500">(Opcional)</p>
+                </div>
+              </label>
+            </div>
+
+            <div className="hidden">
               <div className="space-y-1">
                 <Label className="text-base text-blue-900">Consentimento para Pesquisa (P&D)</Label>
                 <p className="text-sm text-blue-700">

@@ -1,34 +1,31 @@
-import { Outlet, Navigate, useLocation } from 'react-router-dom'
-import { useAuth } from '@/hooks/use-auth'
+import { useState, useEffect } from 'react'
+import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { PatientWelcomeTour } from './PatientWelcomeTour'
 import { GlobalFeedback } from '@/components/GlobalFeedback'
 
 export default function Layout() {
-  const { user, isAuthenticated, loading } = useAuth()
-  const location = useLocation()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(window.innerWidth < 768)
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (user?.role === 'paciente' && location.pathname === '/') {
-    return <Navigate to="/patient-portal" replace />
-  }
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setSidebarCollapsed(true)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-[var(--color-background)] overflow-hidden font-sans">
       <div className="flex flex-1 overflow-hidden min-h-0">
-        <Sidebar />
+        <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
         <div className="flex-1 flex flex-col min-w-0">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6 md:p-8">
-            <div className="mx-auto max-w-6xl">
+          <Header sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed} />
+          <main className="flex-1 overflow-y-auto p-[var(--spacing-lg)]">
+            <div className="mx-auto max-w-[1200px] w-full h-full">
               <Outlet />
             </div>
             <PatientWelcomeTour />

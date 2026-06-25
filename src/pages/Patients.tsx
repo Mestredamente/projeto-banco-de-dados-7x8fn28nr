@@ -106,7 +106,11 @@ export default function Patients() {
               ) : (
                 filteredPatients.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to={`/patients/${p.id}`} className="hover:underline text-teal-600">
+                        {p.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <div className="text-sm">{p.phone || '-'}</div>
                       <div className="text-xs text-gray-500">{p.email}</div>

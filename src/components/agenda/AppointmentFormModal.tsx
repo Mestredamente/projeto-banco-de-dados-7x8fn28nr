@@ -32,6 +32,7 @@ export function AppointmentFormModal({
   const [patients, setPatients] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [warnings, setWarnings] = useState<string[]>([])
+  const [promptAnamnesis, setPromptAnamnesis] = useState<string | null>(null)
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: {
       type: 'presencial',
@@ -51,6 +52,7 @@ export function AppointmentFormModal({
         .then(setPatients)
         .catch(() => {})
       setWarnings([])
+      setPromptAnamnesis(null)
       reset()
     }
   }, [open, reset])
@@ -79,6 +81,14 @@ export function AppointmentFormModal({
     setLoading(true)
     try {
       const isBlock = data.type === 'bloqueado'
+      let isFirst = false
+      if (!isBlock && data.patient) {
+        const prev = await pb
+          .collection('appointments')
+          .getList(1, 1, { filter: `patient = '${data.patient}'` })
+        if (prev.totalItems === 0) isFirst = true
+      }
+
       const baseData = {
         patient: isBlock ? null : data.patient,
         professional: pb.authStore.record?.id,
@@ -109,7 +119,11 @@ export function AppointmentFormModal({
         toast.success('Sessão agendada com sucesso!')
       }
       onSuccess()
-      onOpenChange(false)
+      if (isFirst) {
+        setPromptAnamnesis(data.patient)
+      } else {
+        onOpenChange(false)
+      }
     } catch (e) {
       toast.error('Erro ao agendar.')
     } finally {
@@ -123,101 +137,138 @@ export function AppointmentFormModal({
         <DialogHeader>
           <DialogTitle>Novo Agendamento</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 col-span-2">
-              <Label>Tipo de Sessão</Label>
-              <Select onValueChange={(v) => setValue('type', v)} defaultValue="presencial">
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="presencial">Presencial</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="extra">Extra</SelectItem>
-                  <SelectItem value="bloqueado">Bloqueio Manual</SelectItem>
-                </SelectContent>
-              </Select>
+        {promptAnamnesis ? (
+          <div className="py-6 space-y-4 text-center animate-fade-in">
+            <div className="mx-auto w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mb-4">
+              <svg
+                className="w-6 h-6 text-teal-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
+              </svg>
             </div>
-
-            {wType !== 'bloqueado' && (
-              <div className="space-y-2 col-span-2">
-                <Label>Paciente</Label>
-                <Select onValueChange={(v) => setValue('patient', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o paciente ativo..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-2 col-span-2">
-              <Label>Data</Label>
-              <Input type="date" {...register('date', { required: true })} />
+            <h3 className="text-lg font-medium text-gray-900">Primeira Sessão Agendada!</h3>
+            <p className="text-sm text-gray-500">
+              Este é o primeiro agendamento deste paciente. Deseja realizar a avaliação inicial
+              (anamnese) agora?
+            </p>
+            <div className="flex justify-center gap-3 mt-6">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Deixar para depois
+              </Button>
+              <Button
+                onClick={() => {
+                  window.location.href = `/patients/${promptAnamnesis}?anamnese=true`
+                }}
+              >
+                Iniciar Anamnese
+              </Button>
             </div>
-
-            <div className="space-y-2">
-              <Label>Início</Label>
-              <Input type="time" {...register('start', { required: true })} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Término</Label>
-              <Input type="time" {...register('end', { required: true })} />
-            </div>
-
-            {wType !== 'bloqueado' && (
-              <div className="space-y-2 col-span-2">
-                <Label>Repetição</Label>
-                <Select onValueChange={(v) => setValue('recurrence', v)} defaultValue="none">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nenhuma" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Não se repete</SelectItem>
-                    <SelectItem value="semanal">Semanal (Bloqueio 3 meses)</SelectItem>
-                    <SelectItem value="quinzenal">Quinzenal</SelectItem>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {wType === 'bloqueado' && (
-              <div className="space-y-2 col-span-2">
-                <Label>Motivo do Bloqueio</Label>
-                <Input placeholder="Ex: Almoço, Supervisão, Pessoal..." {...register('notes')} />
-              </div>
-            )}
           </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label>Tipo de Sessão</Label>
+                <Select onValueChange={(v) => setValue('type', v)} defaultValue="presencial">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="presencial">Presencial</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="extra">Extra</SelectItem>
+                    <SelectItem value="bloqueado">Bloqueio Manual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {warnings.length > 0 && (
-            <div className="bg-orange-50 border-l-4 border-orange-500 p-3 my-2 rounded text-orange-800 text-sm">
-              <p className="font-bold mb-1">Atenção!</p>
-              <ul className="list-disc pl-4">
-                {warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
-                ))}
-              </ul>
+              {wType !== 'bloqueado' && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Paciente</Label>
+                  <Select onValueChange={(v) => setValue('patient', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o paciente ativo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {patients.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2 col-span-2">
+                <Label>Data</Label>
+                <Input type="date" {...register('date', { required: true })} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Início</Label>
+                <Input type="time" {...register('start', { required: true })} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Término</Label>
+                <Input type="time" {...register('end', { required: true })} />
+              </div>
+
+              {wType !== 'bloqueado' && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Repetição</Label>
+                  <Select onValueChange={(v) => setValue('recurrence', v)} defaultValue="none">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nenhuma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não se repete</SelectItem>
+                      <SelectItem value="semanal">Semanal (Bloqueio 3 meses)</SelectItem>
+                      <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                      <SelectItem value="mensal">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {wType === 'bloqueado' && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Motivo do Bloqueio</Label>
+                  <Input placeholder="Ex: Almoço, Supervisão, Pessoal..." {...register('notes')} />
+                </div>
+              )}
             </div>
-          )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {warnings.length > 0 ? 'Confirmar e Salvar' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </form>
+            {warnings.length > 0 && (
+              <div className="bg-orange-50 border-l-4 border-orange-500 p-3 my-2 rounded text-orange-800 text-sm">
+                <p className="font-bold mb-1">Atenção!</p>
+                <ul className="list-disc pl-4">
+                  {warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {warnings.length > 0 ? 'Confirmar e Salvar' : 'Salvar'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -10,8 +10,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { format, differenceInDays, differenceInYears } from 'date-fns'
-import { AlertTriangle, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, ShieldCheck, Download } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
 
 export function ComplianceReports({ startDate, endDate }: any) {
@@ -51,33 +52,17 @@ export function ComplianceReports({ startDate, endDate }: any) {
         setCrisisLogs(crises)
 
         try {
-          const logs = await pb.collection('audit_logs').getList(1, 20, {
-            filter: `action = 'view' && table_name = 'patients' && created >= '${startDate}' && created <= '${endDate}'`,
+          const logs = await pb.collection('audit_logs').getFullList({
+            filter: `(action = 'Visualizou prontuário' || action = 'view') && table_name = 'patients' && created >= '${startDate}' && created <= '${endDate}'`,
             expand: 'actor',
             sort: '-created',
           })
-          setAuditLogs(logs.items)
+          setAuditLogs(logs)
           setAuditError(false)
         } catch (err) {
+          console.error('Audit logs error:', err)
           setAuditError(true)
-          setAuditLogs([
-            {
-              id: '1',
-              action: 'view',
-              table_name: 'patients',
-              record_id: 'paciente_id_xyz',
-              created: new Date().toISOString(),
-              expand: { actor: { name: 'João Silva (Mock)' } },
-            },
-            {
-              id: '2',
-              action: 'view',
-              table_name: 'patients',
-              record_id: 'paciente_id_abc',
-              created: new Date(Date.now() - 86400000).toISOString(),
-              expand: { actor: { name: 'Maria Souza (Mock)' } },
-            },
-          ])
+          setAuditLogs([])
         }
       } catch (err) {
         console.error(err)
@@ -206,14 +191,48 @@ export function ComplianceReports({ startDate, endDate }: any) {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-md">Logs de Acesso a Prontuários</CardTitle>
-          {auditError && (
-            <p className="text-xs text-muted-foreground text-amber-600 mt-1">
-              Somente gestores SaaS possuem acesso direto aos logs reais. Exibindo dados de
-              demonstração por segurança.
-            </p>
-          )}
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-md">Logs de Acesso a Prontuários</CardTitle>
+            {auditError && (
+              <p className="text-xs text-muted-foreground text-amber-600 mt-1">
+                Erro ao carregar logs reais.
+              </p>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (auditLogs.length === 0) return
+              const headers = ['Data/Hora', 'Usuário', 'Paciente', 'Ação']
+              const rows = auditLogs.map((log) => [
+                format(new Date(log.created), 'dd/MM/yyyy HH:mm'),
+                log.expand?.actor?.name || log.new_data?.actor_name || 'Sistema',
+                log.new_data?.patient_name || log.record_id,
+                log.action,
+              ])
+              const csvContent = [
+                headers.join(','),
+                ...rows.map((e) => e.map((f) => `"${String(f).replace(/"/g, '""')}"`).join(',')),
+              ].join('\n')
+
+              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement('a')
+              link.setAttribute('href', url)
+              link.setAttribute(
+                'download',
+                `auditoria_acessos_${format(new Date(), 'yyyy-MM-dd')}.csv`,
+              )
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -221,21 +240,35 @@ export function ComplianceReports({ startDate, endDate }: any) {
               <TableRow>
                 <TableHead>Data/Hora</TableHead>
                 <TableHead>Usuário</TableHead>
+                <TableHead>Paciente</TableHead>
                 <TableHead>Ação</TableHead>
-                <TableHead>ID Paciente</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {auditLogs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell>{format(new Date(log.created), 'dd/MM/yyyy HH:mm')}</TableCell>
-                  <TableCell>{log.expand?.actor?.name || 'Sistema'}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{log.action}</Badge>
+              {auditLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-4 text-muted-foreground text-sm">
+                    Nenhum log de acesso no período selecionado.
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{log.record_id}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                auditLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>{format(new Date(log.created), 'dd/MM/yyyy HH:mm')}</TableCell>
+                    <TableCell>
+                      {log.expand?.actor?.name || log.new_data?.actor_name || 'Sistema'}
+                    </TableCell>
+                    <TableCell>
+                      {log.new_data?.patient_name || (
+                        <span className="font-mono text-xs">{log.record_id}</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{log.action}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
