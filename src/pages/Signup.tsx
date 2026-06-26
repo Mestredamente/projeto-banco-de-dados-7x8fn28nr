@@ -1,11 +1,19 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/hooks/use-auth'
-import { useToast } from '@/components/ui/use-toast'
-import { extractFieldErrors } from '@/lib/pocketbase/errors'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/system/Input'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Form,
   FormControl,
@@ -14,78 +22,76 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { useBranding } from '@/hooks/use-branding'
+import { toast } from '@/hooks/use-toast'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-const signupSchema = z
+const formSchema = z
   .object({
-    name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+    name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
     email: z.string().email('E-mail inválido'),
-    password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres'),
-    passwordConfirm: z.string().min(8, 'Confirmação de senha deve ter pelo menos 8 caracteres'),
-    role: z.enum(['psicologo_autonomo', 'admin_clinica', 'psicologo_vinculado', 'secretaria'], {
-      required_error: 'Selecione um perfil',
-    }),
+    password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
+    passwordConfirm: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
+    role: z.string().min(1, 'Selecione um perfil'),
+    cpf: z.string().min(14, 'CPF inválido').max(14),
     crp: z
       .string()
       .optional()
-      .refine((val) => !val || /^\d{2}\/\d{4,7}-\d$/.test(val), {
-        message: 'CRP inválido. Formato: 00/000000-0',
-      }),
+      .refine(
+        (val) => !val || /^\d{4,8}$/.test(val),
+        'CRP inválido. Digite apenas os números do seu CRP.',
+      ),
+    phone: z.string().min(14, 'Telefone inválido'),
     clinic_name: z.string().optional(),
-    acceptedTerms: z.boolean().refine((val) => val === true, {
-      message: 'Você deve aceitar os termos de uso',
-    }),
-    acceptedLgpd: z.boolean().refine((val) => val === true, {
-      message: 'Você deve aceitar a política de privacidade',
-    }),
+    acceptedTerms: z.boolean().refine((val) => val, 'Você deve aceitar os termos de uso'),
+    acceptedLgpd: z
+      .boolean()
+      .refine((val) => val, 'Você deve consentir com a política de privacidade'),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: 'As senhas não coincidem',
     path: ['passwordConfirm'],
   })
-
-type SignupFormValues = z.infer<typeof signupSchema>
+  .refine(
+    (data) => {
+      if (['psicologo_autonomo', 'psicologo_vinculado'].includes(data.role)) {
+        return !!data.crp
+      }
+      return true
+    },
+    {
+      message: 'CRP é obrigatório para psicólogos',
+      path: ['crp'],
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.role === 'admin_clinica') {
+        return !!data.clinic_name
+      }
+      return true
+    },
+    {
+      message: 'Nome da clínica é obrigatório para administradores',
+      path: ['clinic_name'],
+    },
+  )
 
 export default function Signup() {
-  const { signUp } = useAuth()
   const navigate = useNavigate()
-  const { toast } = useToast()
+  const { signUp } = useAuth()
+  const [loading, setLoading] = useState(false)
 
-  // Use Branding hook safely to display the correct platform logo/name
-  const brandingData = useBranding()
-  const logo =
-    brandingData?.logoUrl || brandingData?.branding?.logo_url || brandingData?.branding?.logo
-  const company = brandingData?.companyName || brandingData?.branding?.company_name || 'Plataforma'
-
-  const [isLoading, setIsLoading] = useState(false)
-
-  const form = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       email: '',
       password: '',
       passwordConfirm: '',
-      role: 'psicologo_autonomo',
+      role: '',
+      cpf: '',
       crp: '',
+      phone: '',
       clinic_name: '',
       acceptedTerms: false,
       acceptedLgpd: false,
@@ -93,75 +99,39 @@ export default function Signup() {
   })
 
   const role = form.watch('role')
-  const needsCrp = role === 'psicologo_autonomo' || role === 'psicologo_vinculado'
-  const needsClinicName = role === 'admin_clinica'
 
-  async function onSubmit(data: SignupFormValues) {
-    setIsLoading(true)
-    try {
-      const { error } = await signUp(data)
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setLoading(true)
+    const { error } = await signUp(values)
+    setLoading(false)
 
-      if (error) {
-        const fieldErrors = extractFieldErrors(error)
-        if (Object.keys(fieldErrors).length > 0) {
-          for (const [field, msg] of Object.entries(fieldErrors)) {
-            // Check if field is part of our form schema
-            if (field in data) {
-              form.setError(field as any, { message: msg })
-            }
-          }
-          toast({
-            variant: 'destructive',
-            title: 'Verifique os campos',
-            description: 'Alguns dados informados são inválidos ou já estão em uso.',
-          })
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Erro no cadastro',
-            description: error?.message || 'Ocorreu um erro ao tentar criar sua conta.',
-          })
-        }
-        return
-      }
-
+    if (error) {
       toast({
-        title: 'Cadastro realizado com sucesso!',
-        description: 'Sua conta foi criada. Redirecionando...',
-      })
-
-      navigate('/dashboard')
-    } catch (err: any) {
-      toast({
+        title: 'Erro no cadastro',
+        description:
+          error.message || 'Ocorreu um erro ao criar sua conta. Verifique os dados inseridos.',
         variant: 'destructive',
-        title: 'Erro inesperado',
-        description: err?.message || 'Tente novamente mais tarde.',
       })
-    } finally {
-      setIsLoading(false)
+    } else {
+      toast({
+        title: 'Conta criada com sucesso!',
+        description: 'Bem-vindo ao sistema.',
+      })
+      navigate('/dashboard')
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-lg space-y-6">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          {logo ? (
-            <img src={logo} alt={company} className="h-16 object-contain" />
-          ) : (
-            <h1 className="text-3xl font-bold">{company}</h1>
-          )}
-        </div>
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Criar Conta</CardTitle>
-            <CardDescription className="text-center">
-              Preencha seus dados para começar a usar a plataforma
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
+      <Card className="w-full max-w-2xl">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Criar Conta</CardTitle>
+          <CardDescription>Junte-se à nossa plataforma</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -169,7 +139,7 @@ export default function Signup() {
                     <FormItem>
                       <FormLabel>Nome Completo</FormLabel>
                       <FormControl>
-                        <Input placeholder="Seu nome completo" {...field} />
+                        <Input placeholder="Seu nome" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -183,59 +153,85 @@ export default function Signup() {
                     <FormItem>
                       <FormLabel>E-mail</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="seu@email.com" {...field} />
+                        <Input placeholder="seu@email.com" type="email" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Senha</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="******" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <FormControl>
+                        <Input placeholder="******" type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="passwordConfirm"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirmar Senha</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="******" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="passwordConfirm"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirmar Senha</FormLabel>
+                      <FormControl>
+                        <Input placeholder="******" type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF</FormLabel>
+                      <FormControl>
+                        <Input placeholder="000.000.000-00" mask="cpf" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(00) 00000-0000" mask="phone" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Perfil de Uso</FormLabel>
+                      <FormLabel>Perfil</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione um perfil" />
+                            <SelectValue placeholder="Selecione seu perfil" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="psicologo_autonomo">Psicólogo Autônomo</SelectItem>
-                          <SelectItem value="admin_clinica">Administrador de Clínica</SelectItem>
                           <SelectItem value="psicologo_vinculado">Psicólogo Vinculado</SelectItem>
+                          <SelectItem value="admin_clinica">Administrador de Clínica</SelectItem>
                           <SelectItem value="secretaria">Secretária</SelectItem>
                         </SelectContent>
                       </Select>
@@ -244,7 +240,7 @@ export default function Signup() {
                   )}
                 />
 
-                {needsCrp && (
+                {['psicologo_autonomo', 'psicologo_vinculado'].includes(role) && (
                   <FormField
                     control={form.control}
                     name="crp"
@@ -252,7 +248,7 @@ export default function Signup() {
                       <FormItem>
                         <FormLabel>CRP</FormLabel>
                         <FormControl>
-                          <Input placeholder="00/000000-0" {...field} />
+                          <Input placeholder="Apenas números (Ex: 123456)" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -260,7 +256,7 @@ export default function Signup() {
                   />
                 )}
 
-                {needsClinicName && (
+                {role === 'admin_clinica' && (
                   <FormField
                     control={form.control}
                     name="clinic_name"
@@ -268,14 +264,16 @@ export default function Signup() {
                       <FormItem>
                         <FormLabel>Nome da Clínica</FormLabel>
                         <FormControl>
-                          <Input placeholder="Sua Clínica" {...field} />
+                          <Input placeholder="Sua clínica" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
+              </div>
 
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="acceptedTerms"
@@ -285,14 +283,10 @@ export default function Signup() {
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel className="font-normal">
+                        <FormLabel>
                           Aceito os{' '}
-                          <Link
-                            to="/termos"
-                            target="_blank"
-                            className="text-primary hover:underline"
-                          >
-                            termos de uso
+                          <Link to="/termos" className="text-primary hover:underline">
+                            Termos de Uso
                           </Link>
                         </FormLabel>
                       </div>
@@ -309,37 +303,33 @@ export default function Signup() {
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel className="font-normal">
-                          Li e concordo com a{' '}
-                          <Link
-                            to="/privacidade"
-                            target="_blank"
-                            className="text-primary hover:underline"
-                          >
-                            política de privacidade
+                        <FormLabel>
+                          Concordo com a{' '}
+                          <Link to="/privacidade" className="text-primary hover:underline">
+                            Política de Privacidade
                           </Link>
                         </FormLabel>
                       </div>
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Cadastrando...' : 'Criar Conta'}
+              <div className="flex flex-col space-y-4">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Criando conta...' : 'Criar Conta'}
                 </Button>
-              </form>
-            </Form>
-          </CardContent>
-          <CardFooter className="flex justify-center">
-            <p className="text-sm text-muted-foreground">
-              Já tem uma conta?{' '}
-              <Link to="/login" className="text-primary hover:underline">
-                Fazer login
-              </Link>
-            </p>
-          </CardFooter>
-        </Card>
-      </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  Já tem uma conta?{' '}
+                  <Link to="/login" className="text-primary hover:underline">
+                    Faça login
+                  </Link>
+                </div>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
