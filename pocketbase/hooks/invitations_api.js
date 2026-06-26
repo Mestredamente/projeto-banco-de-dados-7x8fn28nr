@@ -8,13 +8,18 @@ routerAdd('GET', '/backend/v1/invitations/{token}', (e) => {
     ) {
       return e.badRequestError('Convite inválido ou expirado.')
     }
-    $app.expandRecord(invite, ['psicologo_id', 'clinica_id'])
+    $app.expandRecord(invite, ['psicologo_id', 'clinica_id', 'patient'])
     const prof = invite.expandedOne('psicologo_id')
+    const patient = invite.expandedOne('patient')
+
     return e.json(200, {
       id: invite.id,
       paciente_nome: invite.getString('paciente_nome'),
       paciente_email: invite.getString('paciente_email'),
       psicologo_nome: prof ? prof.getString('name') : 'Psicólogo',
+      cpf: patient ? patient.getString('cpf') : '',
+      telefone: patient ? patient.getString('phone') : '',
+      data_nascimento: patient ? patient.getString('date_of_birth').slice(0, 10) : '',
     })
   } catch (err) {
     return e.notFoundError('Convite não encontrado.')
@@ -34,36 +39,67 @@ routerAdd('POST', '/backend/v1/invitations/{token}/accept', (e) => {
         throw new BadRequestError('Convite inválido ou expirado.')
       }
 
-      const usersCol = txApp.findCollectionByNameOrId('_pb_users_auth_')
+      // Check if user already exists
       let user = null
       try {
         user = txApp.findAuthRecordByEmail('_pb_users_auth_', invite.getString('paciente_email'))
       } catch (_) {}
 
-      if (!user) {
-        user = new Record(usersCol)
-        user.setEmail(invite.getString('paciente_email'))
-        user.setPassword(body.password)
-        user.setVerified(true)
-        user.set('name', body.nome)
-        user.set('cpf', body.cpf)
-        user.set('phone', body.telefone)
-        user.set('role', 'paciente')
-        user.set('is_active', true)
-        txApp.save(user)
-      } else {
-        if (!user.getString('cpf') && body.cpf) user.set('cpf', body.cpf)
-        if (!user.getString('phone') && body.telefone) user.set('phone', body.telefone)
-        txApp.save(user)
+      if (!user && body.cpf) {
+        try {
+          user = txApp.findFirstRecordByData('_pb_users_auth_', 'cpf', body.cpf)
+        } catch (_) {}
       }
+
+      if (user) {
+        throw new BadRequestError('USER_EXISTS')
+      }
+
+      const usersCol = txApp.findCollectionByNameOrId('_pb_users_auth_')
+      user = new Record(usersCol)
+      user.setEmail(invite.getString('paciente_email'))
+      user.setPassword(body.password)
+      user.setVerified(true)
+      user.set('name', body.nome)
+      user.set('cpf', body.cpf)
+      user.set('phone', body.telefone)
+      user.set('role', 'paciente')
+      user.set('is_active', true)
+      txApp.save(user)
 
       const patientsCol = txApp.findCollectionByNameOrId('patients')
       let patient = null
-      try {
-        patient = txApp.findFirstRecordByData('patients', 'profile', user.id)
-      } catch (_) {}
 
+      if (invite.getString('patient')) {
+        try {
+          patient = txApp.findRecordById('patients', invite.getString('patient'))
+        } catch (_) {}
+      }
+
+      if (!patient && body.cpf) {
+        try {
+          patient = txApp.findFirstRecordByData('patients', 'cpf', body.cpf)
+        } catch (_) {}
+      }
       if (!patient) {
+        try {
+          patient = txApp.findFirstRecordByData(
+            'patients',
+            'email',
+            invite.getString('paciente_email'),
+          )
+        } catch (_) {}
+      }
+
+      if (patient) {
+        patient.set('profile', user.id)
+        if (!patient.getString('cpf') && body.cpf) patient.set('cpf', body.cpf)
+        if (!patient.getString('phone') && body.telefone) patient.set('phone', body.telefone)
+        if (!patient.getString('date_of_birth') && body.data_nascimento)
+          patient.set('date_of_birth', body.data_nascimento)
+        patient.set('cadastro_completo', true)
+        txApp.save(patient)
+      } else {
         patient = new Record(patientsCol)
         patient.set('profile', user.id)
         patient.set('name', body.nome)
@@ -74,7 +110,7 @@ routerAdd('POST', '/backend/v1/invitations/{token}/accept', (e) => {
         patient.set('convidado_por', invite.getString('psicologo_id'))
         patient.set('created_by', invite.getString('psicologo_id'))
         patient.set('is_active', true)
-        patient.set('cadastro_completo', false)
+        patient.set('cadastro_completo', true)
         txApp.save(patient)
       }
 
@@ -104,6 +140,9 @@ routerAdd('POST', '/backend/v1/invitations/{token}/accept', (e) => {
       return e.json(200, { success: true, user_id: user.id })
     })
   } catch (err) {
+    if (err.message === 'USER_EXISTS') {
+      return e.badRequestError('USER_EXISTS')
+    }
     if (err.message && err.message.includes('UNIQUE constraint failed')) {
       return e.badRequestError('Este CPF ou Email já está cadastrado.')
     }

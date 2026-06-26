@@ -1,109 +1,140 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { z } from 'zod'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import pb from '@/lib/pocketbase/client'
-import { useAuth } from '@/hooks/use-auth'
-import { toast } from '@/hooks/use-toast'
-import { maskCPF, maskPhone } from '@/lib/utils'
-import { BRAND } from '@/config/branding'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { AlertCircle } from 'lucide-react'
-import { PhoneInput } from '@/components/system/PhoneInput'
-import { Input as MaskedInput } from '@/components/system/Input'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useToast } from '@/hooks/use-toast'
+import { Button } from '@/components/system/Button'
+import { Input } from '@/components/system/Input'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/system/Card'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { aplicarMascara } from '@/lib/masks'
+
+const schema = z
+  .object({
+    nome: z.string().min(1, 'Nome é obrigatório'),
+    email: z.string().email('Email inválido'),
+    cpf: z.string().min(14, 'CPF incompleto'),
+    telefone: z.string().min(14, 'Telefone incompleto'),
+    data_nascimento: z.string().min(10, 'Data inválida'),
+    password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  })
+
+type FormValues = z.infer<typeof schema>
 
 export default function PatientInvitation() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
-  const { signIn } = useAuth()
+  const { toast } = useToast()
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [invite, setInvite] = useState<any>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState({
-    nome: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    cpf: '',
-    telefone: '',
-    data_nascimento: '',
+  const [psychologistName, setPsychologistName] = useState('')
+  const [phoneWasPreFilled, setPhoneWasPreFilled] = useState(false)
+  const [cpfWasPreFilled, setCpfWasPreFilled] = useState(false)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      nome: '',
+      email: '',
+      cpf: '',
+      telefone: '',
+      data_nascimento: '',
+      password: '',
+      confirmPassword: '',
+    },
   })
 
   useEffect(() => {
+    async function loadInvite() {
+      if (!token) return
+      try {
+        const res = await pb.send(`/backend/v1/invitations/${token}`, { method: 'GET' })
+        setPsychologistName(res.psicologo_nome)
+
+        form.setValue('nome', res.paciente_nome || '')
+        form.setValue('email', res.paciente_email || '')
+
+        if (res.cpf) {
+          form.setValue('cpf', aplicarMascara(res.cpf, 'cpf'))
+          setCpfWasPreFilled(true)
+        }
+
+        if (res.data_nascimento) {
+          const parts = res.data_nascimento.split('-')
+          if (parts.length >= 3) {
+            form.setValue('data_nascimento', `${parts[2]}/${parts[1]}/${parts[0]}`)
+          }
+        }
+
+        if (res.telefone) {
+          form.setValue('telefone', aplicarMascara(res.telefone, 'phone'))
+          setPhoneWasPreFilled(true)
+        }
+      } catch (err: any) {
+        toast({
+          title: 'Convite inválido',
+          description: 'Este convite pode ter expirado ou já foi utilizado.',
+          variant: 'destructive',
+        })
+        navigate('/login')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadInvite()
+  }, [token, navigate, toast, form])
+
+  const onSubmit = async (data: FormValues) => {
     if (!token) return
-    pb.send(`/backend/v1/invitations/${token}`, { method: 'GET' })
-      .then((res) => {
-        setInvite(res)
-        setForm((prev) => ({ ...prev, nome: res.paciente_nome, email: res.paciente_email }))
-      })
-      .catch((err) => setError(err.message || 'Convite inválido ou expirado.'))
-      .finally(() => setLoading(false))
-  }, [token])
-
-  const validateCPF = (cpf: string) => {
-    let str = cpf.replace(/[^\d]+/g, '')
-    if (str.length !== 11 || !!str.match(/(\d)\1{10}/)) return false
-    let sum = 0,
-      rest
-    for (let i = 1; i <= 9; i++) sum = sum + parseInt(str.substring(i - 1, i)) * (11 - i)
-    rest = (sum * 10) % 11
-    if (rest === 10 || rest === 11) rest = 0
-    if (rest !== parseInt(str.substring(9, 10))) return false
-    sum = 0
-    for (let i = 1; i <= 10; i++) sum = sum + parseInt(str.substring(i - 1, i)) * (12 - i)
-    rest = (sum * 10) % 11
-    if (rest === 10 || rest === 11) rest = 0
-    if (rest !== parseInt(str.substring(10, 11))) return false
-    return true
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (form.password !== form.confirmPassword) {
-      toast({ title: 'Atenção', description: 'As senhas não coincidem.', variant: 'destructive' })
-      return
-    }
-    if (!validateCPF(form.cpf)) {
-      toast({
-        title: 'Atenção',
-        description: 'O CPF informado é inválido.',
-        variant: 'destructive',
-      })
-      return
-    }
-    if (form.password.length < 8) {
-      toast({
-        title: 'Atenção',
-        description: 'A senha deve ter pelo menos 8 caracteres.',
-        variant: 'destructive',
-      })
-      return
-    }
-
     setSubmitting(true)
     try {
+      const payload = {
+        nome: data.nome,
+        email: data.email,
+        cpf: data.cpf.replace(/\D/g, ''),
+        telefone: data.telefone.replace(/\D/g, ''),
+        data_nascimento: data.data_nascimento.split('/').reverse().join('-'),
+        password: data.password,
+      }
+
       await pb.send(`/backend/v1/invitations/${token}/accept`, {
         method: 'POST',
-        body: JSON.stringify({
-          password: form.password,
-          nome: form.nome,
-          telefone: form.telefone,
-          cpf: form.cpf,
-          data_nascimento: form.data_nascimento,
-        }),
+        body: payload,
       })
 
-      toast({ title: 'Sucesso!', description: 'Sua conta foi criada. Entrando...' })
-      await signIn(form.email, form.password)
-      navigate('/patient-portal')
-    } catch (err: any) {
       toast({
-        title: 'Erro',
-        description: err.message || 'Ocorreu um erro ao criar a conta.',
+        title: 'Cadastro concluído',
+        description: 'Sua conta foi criada com sucesso! Você pode fazer o login agora.',
+      })
+      navigate('/login')
+    } catch (err: any) {
+      if (err?.response?.message === 'USER_EXISTS' || err?.message === 'USER_EXISTS') {
+        toast({
+          title: 'Cadastro existente',
+          description: 'Você já possui cadastro. Faça login para continuar.',
+          variant: 'destructive',
+        })
+        navigate('/login')
+        return
+      }
+      toast({
+        title: 'Erro no cadastro',
+        description: err?.response?.message || 'Verifique seus dados e tente novamente.',
         variant: 'destructive',
       })
     } finally {
@@ -113,153 +144,149 @@ export default function PatientInvitation() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p>Carregando...</p>
-      </div>
-    )
-  }
-
-  if (error || !invite) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <Card className="w-full max-w-md shadow-lg rounded-[12px]">
-          <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
-            <AlertCircle className="h-12 w-12 text-red-500" />
-            <h2 className="text-xl font-bold" style={{ fontFamily: BRAND.fontHeading }}>
-              Convite Inválido
-            </h2>
-            <p className="text-gray-600" style={{ fontFamily: BRAND.fontBody }}>
-              {error}
-            </p>
-            <Button
-              className="mt-4 text-white"
-              style={{ borderRadius: BRAND.borderRadius, backgroundColor: BRAND.corPrimary }}
-              onClick={() => navigate('/login')}
-            >
-              Ir para Login
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <Card
-        className="w-full max-w-lg shadow-lg border-t-4"
-        style={{ borderTopColor: BRAND.corPrimary, borderRadius: BRAND.borderRadiusCard }}
-      >
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold" style={{ fontFamily: BRAND.fontHeading }}>
-            Bem-vindo(a) ao {BRAND.nome}
-          </CardTitle>
-          <CardDescription style={{ fontFamily: BRAND.fontBody }}>
-            Olá <strong>{invite.paciente_nome}</strong>, você foi convidado por{' '}
-            <strong>{invite.psicologo_nome}</strong> para criar sua conta.
+          <CardTitle className="text-2xl text-center">Complete seu Cadastro</CardTitle>
+          <CardDescription className="text-center">
+            Você foi convidado por <strong>{psychologistName}</strong> para acessar o portal do
+            paciente.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-            style={{ fontFamily: BRAND.fontBody }}
-          >
-            <div className="space-y-2">
-              <Label>Nome Completo</Label>
-              <Input
-                required
-                value={form.nome}
-                onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))}
-                style={{ borderRadius: BRAND.borderRadius }}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="nome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome Completo</FormLabel>
+                    <FormControl>
+                      <Input {...field} readOnly className="bg-gray-100" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                disabled
-                value={form.email}
-                className="bg-gray-100"
-                style={{ borderRadius: BRAND.borderRadius }}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>E-mail</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" readOnly className="bg-gray-100" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>CPF</Label>
-                <MaskedInput
-                  mask="cpf"
-                  required
-                  placeholder="000.000.000-00"
-                  value={form.cpf}
-                  onChange={(e) => setForm((p) => ({ ...p, cpf: e.target.value }))}
-                  style={{ borderRadius: BRAND.borderRadius }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Data de Nascimento</Label>
-                <Input
-                  required
-                  type="date"
-                  value={form.data_nascimento}
-                  onChange={(e) => setForm((p) => ({ ...p, data_nascimento: e.target.value }))}
-                  style={{ borderRadius: BRAND.borderRadius }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Telefone</Label>
-              <PhoneInput
-                required
-                value={form.telefone}
-                onChange={(val) => setForm((p) => ({ ...p, telefone: val }))}
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        readOnly={cpfWasPreFilled}
+                        className={cpfWasPreFilled ? 'bg-gray-100' : ''}
+                        onChange={(e) => {
+                          field.onChange(aplicarMascara(e.target.value, 'cpf'))
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Senha</Label>
-                <Input
-                  required
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                  style={{ borderRadius: BRAND.borderRadius }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Confirmar Senha</Label>
-                <Input
-                  required
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={(e) => setForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                  style={{ borderRadius: BRAND.borderRadius }}
-                />
-              </div>
-            </div>
+              <FormField
+                control={form.control}
+                name="data_nascimento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Nascimento</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="DD/MM/AAAA"
+                        onChange={(e) => {
+                          field.onChange(aplicarMascara(e.target.value, 'date'))
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Alert className="mt-4 bg-blue-50 border-blue-200">
-              <AlertDescription className="text-xs text-blue-800">
-                A senha deve conter no mínimo 8 caracteres.
-              </AlertDescription>
-            </Alert>
+              <FormField
+                control={form.control}
+                name="telefone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="(00) 00000-0000"
+                        readOnly={phoneWasPreFilled}
+                        className={phoneWasPreFilled ? 'bg-gray-100' : ''}
+                        onChange={(e) => {
+                          field.onChange(aplicarMascara(e.target.value, 'phone'))
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Button
-              type="submit"
-              className="w-full mt-6 text-white"
-              disabled={submitting}
-              style={{
-                backgroundColor: BRAND.corPrimary,
-                borderRadius: BRAND.borderRadius,
-                fontFamily: BRAND.fontButton,
-              }}
-            >
-              {submitting ? 'Processando...' : 'Concluir Cadastro'}
-            </Button>
-          </form>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="Mínimo 8 caracteres" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirmar Senha</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="Confirme sua senha" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? 'Salvando...' : 'Concluir Cadastro'}
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
