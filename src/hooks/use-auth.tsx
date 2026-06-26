@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await pb.collection('users').create({
         email: data.email,
         password: data.password,
-        passwordConfirm: data.password,
+        passwordConfirm: data.passwordConfirm || data.password,
         name: data.name,
         role: data.role,
         cpf: data.cpf,
