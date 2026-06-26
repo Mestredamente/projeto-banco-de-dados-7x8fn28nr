@@ -31,6 +31,7 @@ import ClinicAdmin from './pages/ClinicAdmin'
 import Secretaries from './pages/Secretaries'
 import Referrals from './pages/Referrals'
 import Supervisions from './pages/Supervisions'
+import Telepsicologia from './pages/Telepsicologia'
 import Academy from './pages/Academy'
 import AcademyCourse from './pages/AcademyCourse'
 import Research from './pages/Research'
@@ -112,6 +113,7 @@ const App = () => (
 
                     <Route element={<RouteGuard allowedModules={['agenda']} />}>
                       <Route path="/agenda" element={<Agenda />} />
+                      <Route path="/telepsicologia" element={<Telepsicologia />} />
                     </Route>
 
                     <Route element={<RouteGuard allowedModules={['pacientes']} />}>

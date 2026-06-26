@@ -73,6 +73,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
     },
     { name: 'Pacientes', path: '/patients', icon: Users, module: 'pacientes' },
     { name: 'Grupos Terapêuticos', path: '/grupos', icon: Users, module: 'pacientes' },
+    { name: '🖥️ Telepsicologia', path: '/telepsicologia', icon: LayoutDashboard, module: 'agenda' },
     { name: 'Prontuário', path: '/notes', icon: FileText, module: 'prontuario' },
     { name: 'Financeiro', path: '/financeiro', icon: DollarSign, module: 'financeiro' },
     { name: 'Relatórios', path: '/reports', icon: BarChart2, module: 'relatorios' },
@@ -97,7 +98,8 @@ export function Sidebar({ collapsed }: SidebarProps) {
         i.path !== '/dashboard' &&
         i.path !== '/clinica/home' &&
         i.path !== '/ai-alerts' &&
-        i.path !== '/grupos',
+        i.path !== '/grupos' &&
+        i.path !== '/telepsicologia',
     )
     const homeIdx = allowedItems.findIndex((i) => i.path === '/secretaria/home')
     if (homeIdx !== -1) allowedItems[homeIdx].name = 'Home'
@@ -111,7 +113,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   }
 
   if (activeProfile?.id === 'gestor_saas' || activeProfile?.id === 'paciente') {
-    allowedItems = allowedItems.filter((i) => i.path !== '/grupos')
+    allowedItems = allowedItems.filter((i) => i.path !== '/grupos' && i.path !== '/telepsicologia')
   }
 
   allowedItems = allowedItems.filter(

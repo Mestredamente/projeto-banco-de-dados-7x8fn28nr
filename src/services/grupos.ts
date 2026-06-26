@@ -42,13 +42,11 @@ export const updatePresenca = (id: string, data: any) =>
 export const getEvolucoes = (grupoId: string, tipo?: string) => {
   let filter = `grupo_id = '${grupoId}'`
   if (tipo) filter += ` && tipo = '${tipo}'`
-  return pb
-    .collection('evolucoes_grupo')
-    .getFullList({
-      filter,
-      sort: '-created',
-      expand: 'autor_id,participante_id.paciente_id,sessao_id',
-    })
+  return pb.collection('evolucoes_grupo').getFullList({
+    filter,
+    sort: '-created',
+    expand: 'autor_id,participante_id.paciente_id,sessao_id',
+  })
 }
 
 export const createEvolucao = (data: any) => pb.collection('evolucoes_grupo').create(data)

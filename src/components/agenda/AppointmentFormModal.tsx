@@ -42,8 +42,11 @@ export function AppointmentFormModal({
       recurrence: 'none',
       notes: '',
       patient: '',
+      meeting_link: '',
     },
   })
+
+  const wLink = watch('meeting_link')
 
   useEffect(() => {
     if (open) {
@@ -58,6 +61,12 @@ export function AppointmentFormModal({
   }, [open, reset])
 
   const wType = watch('type')
+
+  useEffect(() => {
+    if (wType === 'online' && !wLink && pb.authStore.record?.sala_fixa) {
+      setValue('meeting_link', pb.authStore.record.sala_fixa)
+    }
+  }, [wType, wLink, setValue])
 
   const onSubmit = async (data: any) => {
     const isLunch = checkOverlap(data.start, data.end, LUNCH_START, LUNCH_END)
@@ -98,6 +107,7 @@ export function AppointmentFormModal({
         session_type: data.type,
         status: isBlock ? 'realizado' : 'agendado',
         notes: isBlock ? data.notes : '',
+        meeting_link: data.meeting_link || '',
       }
 
       if (data.recurrence === 'semanal') {
@@ -189,6 +199,18 @@ export function AppointmentFormModal({
                   </SelectContent>
                 </Select>
               </div>
+
+              {wType === 'online' && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Link da Videochamada (Opcional)</Label>
+                  <Input placeholder="https://meet.google.com/..." {...register('meeting_link')} />
+                  {pb.authStore.record?.sala_fixa && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Sua sala fixa foi preenchida automaticamente.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {wType !== 'bloqueado' && (
                 <div className="space-y-2 col-span-2">
