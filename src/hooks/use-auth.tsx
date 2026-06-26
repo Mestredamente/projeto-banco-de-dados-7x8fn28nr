@@ -61,21 +61,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (data: any) => {
     try {
-      await pb.collection('users').create({
+      const payload = {
         email: data.email,
         password: data.password,
         passwordConfirm: data.passwordConfirm || data.password,
-        name: data.name,
+        name: data.name || '',
         role: data.role,
-        cpf: data.cpf,
-        crp: data.crp,
-        phone: data.phone,
+        cpf: data.cpf || '',
+        crp: data.crp || '',
+        phone: data.phone || '',
         terms_accepted_at: data.acceptedTerms ? new Date().toISOString() : null,
         consent_given_at: data.acceptedLgpd ? new Date().toISOString() : null,
         emailVisibility: true,
-        clinic_name: data.clinic_name, // Extra field handled by user_onboarding hook
+        clinic_name: data.clinic_name || '', // Extra field handled by user_onboarding hook
         is_active: true,
-      })
+      }
+      await pb.collection('users').create(payload)
       await pb.collection('users').authWithPassword(data.email, data.password)
       return { error: null }
     } catch (error) {
