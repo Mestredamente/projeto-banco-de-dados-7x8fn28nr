@@ -53,6 +53,7 @@ import { MaintenanceGuard } from '@/components/system/MaintenanceGuard'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import SaasSettings from './pages/SaasSettings'
+import SaasProfile from './pages/SaasProfile'
 
 const RootRedirect = () => {
   const { getHomeRoute, activeProfile } = useProfile()
@@ -106,6 +107,7 @@ const App = () => (
                         />
                         <Route path="/gestao/dashboard" element={<SaasAdmin />} />
                         <Route path="/gestao/configuracoes" element={<SaasSettings />} />
+                        <Route path="/gestao/perfil" element={<SaasProfile />} />
                       </Route>
 
                       <Route element={<RouteGuard allowedModules={['paciente_portal']} />}>

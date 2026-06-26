@@ -101,12 +101,10 @@ export function DashboardTab() {
     async function loadData() {
       try {
         const subs = await pb.collection('subscriptions').getFullList({ expand: 'plan,subscriber' })
-        const users = await pb
-          .collection('users')
-          .getFullList({
-            filter:
-              "role = 'psicologo_autonomo' || role = 'admin_clinica' || role = 'psicologo_vinculado'",
-          })
+        const users = await pb.collection('users').getFullList({
+          filter:
+            "role = 'psicologo_autonomo' || role = 'admin_clinica' || role = 'psicologo_vinculado'",
+        })
         const plans = await pb.collection('plans').getFullList()
 
         const now = new Date()

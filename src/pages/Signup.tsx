@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/system/Input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -14,7 +14,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
-import { maskCPF, maskCRP, maskPhone } from '@/lib/utils'
 
 function validateCPF(cpf: string) {
   cpf = cpf.replace(/[^\d]+/g, '')
@@ -59,11 +58,7 @@ export default function Signup() {
 
   const updateForm = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    let v = value
-    if (name === 'cpf') v = maskCPF(value)
-    if (name === 'crp') v = maskCRP(value)
-    if (name === 'phone') v = maskPhone(value)
-    setForm((prev) => ({ ...prev, [name]: v }))
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleNext = (e: React.FormEvent) => {
@@ -73,7 +68,8 @@ export default function Signup() {
         toast({ title: 'Atenção', description: 'CPF inválido.', variant: 'destructive' })
         return
       }
-      const crpValid = /^\d{2}\/\d{5,6}$/.test(form.crp)
+      // Permite de 4 a 7 dígitos após a barra para abranger todas as variações de CRP
+      const crpValid = /^\d{2}\/\d{4,7}$/.test(form.crp)
       if (!crpValid) {
         toast({
           title: 'Atenção',
@@ -181,6 +177,7 @@ export default function Signup() {
                       value={form.cpf}
                       onChange={updateForm}
                       placeholder="000.000.000-00"
+                      mask="cpf"
                     />
                   </div>
                   <div className="space-y-2">
@@ -192,6 +189,7 @@ export default function Signup() {
                       value={form.crp}
                       onChange={updateForm}
                       placeholder="00/00000"
+                      mask="crp"
                     />
                   </div>
                 </div>
@@ -204,6 +202,7 @@ export default function Signup() {
                     value={form.phone}
                     onChange={updateForm}
                     placeholder="(00) 00000-0000"
+                    mask="phone"
                   />
                 </div>
 
