@@ -1,17 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { useAuth } from '@/hooks/use-auth'
+import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -20,8 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { useAuth } from '@/hooks/use-auth'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import {
   Form,
@@ -32,32 +32,25 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Loader2 } from 'lucide-react'
-import { extractFieldErrors } from '@/lib/pocketbase/errors'
+
+// Custom mask for CRP (e.g., 00/000000 or 00/00000)
+const applyCrpMask = (value: string) => {
+  if (!value) return ''
+  const numericValue = value.replace(/\D/g, '')
+  if (numericValue.length <= 2) return numericValue
+  return `${numericValue.slice(0, 2)}/${numericValue.slice(2, 8)}`
+}
 
 const signupSchema = z
   .object({
     name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-    email: z.string().email('Email inválido'),
-    password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
-    passwordConfirm: z.string().min(8, 'Confirmação de senha deve ter no mínimo 8 caracteres'),
-    role: z.enum([
-      'psicologo_autonomo',
-      'admin_clinica',
-      'paciente',
-      'secretaria',
-      'psicologo_vinculado',
-      'gestor_saas',
-    ]),
-    cpf: z.string().min(11, 'CPF deve conter pelo menos 11 dígitos'),
+    email: z.string().email('E-mail inválido'),
+    password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
+    passwordConfirm: z.string().min(8, 'A confirmação de senha deve ter no mínimo 8 caracteres'),
+    role: z.enum(['psicologo_autonomo', 'admin_clinica'], {
+      required_error: 'Selecione um perfil',
+    }),
     crp: z.string().optional(),
-    phone: z.string().min(10, 'Telefone deve ter pelo menos 10 dígitos'),
-    clinic_name: z.string().optional(),
-    acceptedTerms: z.boolean().refine((val) => val === true, {
-      message: 'Você deve aceitar os termos de uso',
-    }),
-    acceptedLgpd: z.boolean().refine((val) => val === true, {
-      message: 'Você deve consentir com a política de privacidade',
-    }),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: 'As senhas não coincidem',
@@ -65,24 +58,26 @@ const signupSchema = z
   })
   .refine(
     (data) => {
-      if (['psicologo_autonomo', 'psicologo_vinculado'].includes(data.role)) {
-        return !!data.crp && /^\d{2}\/\d{4,6}$/.test(data.crp)
+      if (data.role === 'psicologo_autonomo') {
+        return !!data.crp && data.crp.replace(/\D/g, '').length >= 4
       }
       return true
     },
     {
-      message: 'CRP inválido (Formato exigido: 00/00000)',
+      message: 'CRP é obrigatório para psicólogos',
       path: ['crp'],
     },
   )
 
+type SignupFormValues = z.infer<typeof signupSchema>
+
 export default function Signup() {
+  const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
 
-  const form = useForm<z.infer<typeof signupSchema>>({
+  const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       name: '',
@@ -90,88 +85,167 @@ export default function Signup() {
       password: '',
       passwordConfirm: '',
       role: 'psicologo_autonomo',
-      cpf: '',
       crp: '',
-      phone: '',
-      clinic_name: '',
-      acceptedTerms: false,
-      acceptedLgpd: false,
     },
   })
 
-  const role = form.watch('role')
-  const isPsychologist = role === 'psicologo_autonomo' || role === 'psicologo_vinculado'
-  const isClinicAdmin = role === 'admin_clinica'
+  const selectedRole = form.watch('role')
 
-  const onSubmit = async (data: z.infer<typeof signupSchema>) => {
-    setIsLoading(true)
-    const { error } = await signUp(data)
-    setIsLoading(false)
+  const onSubmit = async (values: SignupFormValues) => {
+    setLoading(true)
 
-    if (error) {
-      const fieldErrors = extractFieldErrors(error)
+    try {
+      // Create auth record
+      const { error } = await signUp(values.email, values.password)
 
-      Object.entries(fieldErrors).forEach(([key, msg]) => {
-        if (key in data) {
-          form.setError(key as any, { type: 'server', message: msg })
-        }
-      })
+      if (error) {
+        toast({
+          title: 'Erro no cadastro',
+          description:
+            error?.message ||
+            'Não foi possível realizar o cadastro. O e-mail pode já estar em uso.',
+          variant: 'destructive',
+        })
+        setLoading(false)
+        return
+      }
+
+      // Update additional profile fields
+      if (pb.authStore.record) {
+        await pb.collection('users').update(pb.authStore.record.id, {
+          name: values.name,
+          role: values.role,
+          crp: values.role === 'psicologo_autonomo' ? values.crp : null,
+          is_active: true,
+        })
+      }
 
       toast({
-        title: 'Erro ao criar conta',
-        description: error.message || 'Verifique os dados e tente novamente.',
+        title: 'Cadastro realizado com sucesso!',
+        description: 'Seja bem-vindo(a) ao Syntra.',
+      })
+      navigate('/dashboard')
+    } catch (err: any) {
+      console.error('Signup error:', err)
+      toast({
+        title: 'Aviso',
+        description: 'Conta criada, mas houve um erro ao salvar o perfil.',
         variant: 'destructive',
       })
-    } else {
-      toast({
-        title: 'Conta criada com sucesso!',
-        description: 'Redirecionando para o sistema...',
-      })
-      navigate('/')
+      navigate('/dashboard')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-muted/30">
-      <Card className="w-full max-w-2xl shadow-lg">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold tracking-tight">Criar uma conta</CardTitle>
-          <CardDescription>Preencha seus dados para acessar a plataforma.</CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md shadow-lg border-0 ring-1 ring-gray-200 dark:ring-gray-800 animate-fade-in-up">
+        <CardHeader className="space-y-2 text-center pb-6">
+          <div className="flex justify-center mb-2">
+            <div className="h-14 w-14 bg-teal-600 rounded-2xl flex items-center justify-center shadow-sm">
+              <span className="text-white text-2xl font-bold">S</span>
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Criar uma conta
+          </CardTitle>
+          <CardDescription className="text-gray-500">
+            Preencha seus dados para começar a usar a plataforma
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome completo</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Seu nome"
+                        {...field}
+                        disabled={loading}
+                        className="h-11"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>E-mail</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="seu@email.com"
+                        {...field}
+                        disabled={loading}
+                        className="h-11"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Qual o seu perfil?</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={loading}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Selecione um perfil" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="psicologo_autonomo">Psicólogo(a)</SelectItem>
+                        <SelectItem value="admin_clinica">Administrador(a) de Clínica</SelectItem>
+                        {/* A opção 'paciente' foi removida para forçar o uso do fluxo de convite exclusivo */}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {selectedRole === 'psicologo_autonomo' && (
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="crp"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome completo</FormLabel>
+                    <FormItem className="animate-fade-in">
+                      <FormLabel>Número do CRP</FormLabel>
                       <FormControl>
-                        <Input placeholder="Seu nome completo" {...field} />
+                        <Input
+                          placeholder="00/000000"
+                          {...field}
+                          onChange={(e) => field.onChange(applyCrpMask(e.target.value))}
+                          disabled={loading}
+                          className="h-11"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              )}
 
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>E-mail</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="seu@email.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="password"
@@ -179,7 +253,7 @@ export default function Signup() {
                     <FormItem>
                       <FormLabel>Senha</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Mínimo 8 caracteres" {...field} />
+                        <Input type="password" {...field} disabled={loading} className="h-11" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -191,9 +265,9 @@ export default function Signup() {
                   name="passwordConfirm"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirmar Senha</FormLabel>
+                      <FormLabel>Confirmar senha</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Repita a senha" {...field} />
+                        <Input type="password" {...field} disabled={loading} className="h-11" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -201,154 +275,32 @@ export default function Signup() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="cpf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CPF</FormLabel>
-                      <FormControl>
-                        <Input placeholder="000.000.000-00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white transition-colors"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Criando conta...
+                    </>
+                  ) : (
+                    'Cadastrar'
                   )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone (WhatsApp)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="(00) 00000-0000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                </Button>
               </div>
-
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Perfil</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione seu perfil" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="psicologo_autonomo">Psicólogo(a) Autônomo(a)</SelectItem>
-                        <SelectItem value="admin_clinica">Administrador(a) de Clínica</SelectItem>
-                        <SelectItem value="paciente">Paciente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {isPsychologist && (
-                <FormField
-                  control={form.control}
-                  name="crp"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CRP</FormLabel>
-                      <FormControl>
-                        <Input placeholder="00/00000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {isClinicAdmin && (
-                <FormField
-                  control={form.control}
-                  name="clinic_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome da Clínica (Opcional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Sua Clínica" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <div className="space-y-4 pt-2">
-                <FormField
-                  control={form.control}
-                  name="acceptedTerms"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-card">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Li e aceito os{' '}
-                          <Link to="/termos" className="text-primary hover:underline">
-                            termos de uso
-                          </Link>
-                          .
-                        </FormLabel>
-                        <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="acceptedLgpd"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-card">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Autorizo o tratamento dos meus dados conforme a{' '}
-                          <Link to="/privacidade" className="text-primary hover:underline">
-                            política de privacidade
-                          </Link>{' '}
-                          (LGPD).
-                        </FormLabel>
-                        <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando conta...
-                  </>
-                ) : (
-                  'Cadastrar'
-                )}
-              </Button>
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex justify-center border-t p-6">
-          <div className="text-center text-sm text-muted-foreground">
-            Já tem uma conta?{' '}
-            <Link to="/login" className="font-semibold text-primary hover:underline">
+        <CardFooter className="flex flex-col space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="text-sm text-center text-gray-500">
+            Já possui uma conta?{' '}
+            <Link
+              to="/login"
+              className="text-teal-600 hover:text-teal-700 font-medium hover:underline transition-colors"
+            >
               Fazer login
             </Link>
           </div>
