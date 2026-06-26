@@ -10,6 +10,7 @@ export function PatientAnamnesisTab({ patient }: { patient: any }) {
   const [wizardOpen, setWizardOpen] = useState(false)
 
   const loadAnamnesis = async () => {
+    if (!patient?.id) return
     try {
       setLoading(true)
       const record = await pb.collection('anamnesis').getFirstListItem(`patient = '${patient.id}'`)
@@ -22,10 +23,14 @@ export function PatientAnamnesisTab({ patient }: { patient: any }) {
   }
 
   useEffect(() => {
-    loadAnamnesis()
-  }, [patient.id])
+    if (patient?.id) {
+      loadAnamnesis()
+    } else {
+      setLoading(false)
+    }
+  }, [patient?.id])
 
-  if (loading) {
+  if (!patient?.id || loading) {
     return <div className="text-center py-8">Carregando...</div>
   }
 
