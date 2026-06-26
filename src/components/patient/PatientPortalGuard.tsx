@@ -1,49 +1,37 @@
-import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
+import { useProfile } from '@/hooks/use-profile'
+import { PatientProfileCompletionBanner } from './PatientProfileCompletionBanner'
+import { useEffect, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
-import { PatientLGPDModal } from './PatientLGPDModal'
-import { Spinner } from '@/components/system/Spinner'
 
 export function PatientPortalGuard() {
   const { user } = useAuth()
+  const { activeProfile } = useProfile()
   const [patient, setPatient] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user?.role === 'paciente') {
+    if (user && activeProfile?.id === 'paciente') {
       pb.collection('patients')
         .getFirstListItem(`profile="${user.id}"`)
         .then(setPatient)
-        .catch(() => {})
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
+        .catch(console.error)
     }
-  }, [user])
+  }, [user, activeProfile])
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-12">
-        <Spinner size="lg" />
-      </div>
-    )
+  if (!user || activeProfile?.id !== 'paciente') {
+    return <Navigate to="/" replace />
   }
-
-  // Only apply overlay logic to patients
-  if (user?.role !== 'paciente') {
-    return <Outlet />
-  }
-
-  const needsConsent =
-    patient && (patient.primeiro_acesso_portal !== false || !patient.consent_clinical_at)
 
   return (
     <>
-      {needsConsent && <PatientLGPDModal patient={patient} onComplete={setPatient} />}
-      <div className={needsConsent ? 'pointer-events-none opacity-30 blur-sm' : ''}>
-        <Outlet />
-      </div>
+      {patient && patient.cadastro_completo === false && (
+        <PatientProfileCompletionBanner
+          patientId={patient.id}
+          onComplete={() => setPatient({ ...patient, cadastro_completo: true })}
+        />
+      )}
+      <Outlet />
     </>
   )
 }

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,16 +7,19 @@
 @layer base {
   :root {
     /* Cores Globais - Design System */
-    --color-primary: #2d6a8f;
-    --color-primary-hover: #1f4d6b;
-    --color-primary-light: #e8f0f6;
-    --color-secondary: #b87768;
-    --color-secondary-hover: #9c5f52;
-    --color-accent: #4caf8c;
+    --color-primary: #1b4d5c;
+    --color-primary-hover: #143b47;
+    --color-primary-light: #e3ecef;
+    --color-secondary: #c86a5e;
+    --color-secondary-hover: #a8564b;
+    --color-tertiary: #d49488;
+    --color-neutral: #f5f3f0;
+    --color-dark: #1a1d21;
+    --color-accent: #f0e6e2;
     --color-surface: #ffffff;
-    --color-background: #f7f8fa;
+    --color-background: #f5f3f0;
     --color-border: #e2e6ec;
-    --color-text-primary: #1a232e;
+    --color-text-primary: #1a1d21;
     --color-text-secondary: #6b7a8a;
     --color-text-disabled: #a0aebe;
     --color-success: #4caf8c;
@@ -26,8 +29,9 @@
     --color-info: #5b8fc4;
 
     /* Tipografia */
-    --font-sans: 'Inter', sans-serif;
-    --font-serif: 'Instrument Serif', serif;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-heading: 'Inter', sans-serif;
+    --font-button: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     --text-caption: 12px;
@@ -56,10 +60,10 @@
     --spacing-3xl: 64px;
 
     /* Bordas */
-    --radius-sm: 4px;
+    --radius-sm: 8px;
     --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
     --radius-full: 9999px;
 
     /* Sombras */
@@ -98,7 +102,7 @@
     --border: var(--color-border);
     --input: var(--color-border);
     --ring: var(--color-primary);
-    --radius: var(--radius-md);
+    --radius: 8px;
   }
 
   [data-theme='dark'],
@@ -139,7 +143,26 @@ h3,
 h4,
 h5,
 h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
   line-height: var(--line-height-heading);
+}
+
+button,
+input,
+select,
+textarea,
+label {
+  font-family: var(--font-button);
+}
+
+/* Patient Portal specific typography */
+.patient-portal-area p,
+.patient-portal-area span,
+.patient-portal-area div {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 16px;
 }
 
 @layer utilities {

@@ -39,7 +39,7 @@ export const ROLE_DEFINITIONS = {
     id: ROLES.ADMIN_SYNTRA,
     label: 'Administrador Syntra',
     description: 'Gestor da plataforma Syntra',
-    homeRoute: '/gestao',
+    homeRoute: '/gestao/dashboard',
   },
   [ROLES.PACIENTE]: {
     id: ROLES.PACIENTE,

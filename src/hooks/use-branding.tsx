@@ -2,12 +2,19 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from './use-auth'
 
+import { BRAND } from '@/config/branding'
+
 interface BrandingContextType {
   clinic: any
+  systemSettings: any
   loading: boolean
 }
 
-const BrandingContext = createContext<BrandingContextType>({ clinic: null, loading: true })
+const BrandingContext = createContext<BrandingContextType>({
+  clinic: null,
+  systemSettings: null,
+  loading: true,
+})
 
 export const useBranding = () => useContext(BrandingContext)
 
@@ -42,7 +49,22 @@ function mixColors(color1: string, color2: string, weight: number) {
 export const BrandingProvider = ({ children }: { children: ReactNode }) => {
   const { user, isAuthenticated } = useAuth()
   const [clinic, setClinic] = useState<any>(null)
+  const [systemSettings, setSystemSettings] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchSys = async () => {
+      try {
+        const records = await pb.collection('system_settings').getList(1, 1)
+        if (records.items.length > 0) {
+          setSystemSettings(records.items[0])
+        }
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+    fetchSys()
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -117,5 +139,9 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [clinic])
 
-  return React.createElement(BrandingContext.Provider, { value: { clinic, loading } }, children)
+  return React.createElement(
+    BrandingContext.Provider,
+    { value: { clinic, systemSettings, loading } },
+    children,
+  )
 }

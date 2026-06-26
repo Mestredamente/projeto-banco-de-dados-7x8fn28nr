@@ -1,80 +1,101 @@
 import React, { forwardRef, useState, useEffect } from 'react'
-import { cn, maskCPF, maskPhone } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { aplicarMascara } from '@/lib/masks'
+import { Eye, EyeOff } from 'lucide-react'
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   error?: string
-  mask?: 'cpf' | 'cnpj' | 'cep' | 'phone' | 'date'
-}
-
-function applyMask(value: string, mask?: string) {
-  if (!value) return ''
-  switch (mask) {
-    case 'cpf':
-      return maskCPF(value)
-    case 'cnpj': {
-      const v = value.replace(/\D/g, '')
-      return v
-        .replace(/(\d{2})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1/$2')
-        .replace(/(\d{4})(\d{1,2})/, '$1-$2')
-        .slice(0, 18)
-    }
-    case 'cep': {
-      const v = value.replace(/\D/g, '')
-      return v.replace(/(\d{5})(\d)/, '$1-$2').slice(0, 9)
-    }
-    case 'phone':
-      return maskPhone(value)
-    case 'date': {
-      const v = value.replace(/\D/g, '')
-      return v
-        .replace(/(\d{2})(\d)/, '$1/$2')
-        .replace(/(\d{2})\/(\d{2})(\d)/, '$1/$2/$3')
-        .slice(0, 10)
-    }
-    default:
-      return value
-  }
+  mask?: 'cpf' | 'cnpj' | 'cep' | 'phone' | 'crp' | 'currency' | 'date'
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, error, mask, onChange, value, defaultValue, ...props }, ref) => {
+  (
+    { className, error, mask, onChange, onFocus, onBlur, value, defaultValue, type, ...props },
+    ref,
+  ) => {
     const [internalValue, setInternalValue] = useState(defaultValue || value || '')
+    const [isFocused, setIsFocused] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+
+    const isPassword = type === 'password'
+    const actualType = isPassword && showPassword ? 'text' : type
 
     useEffect(() => {
       if (value !== undefined) {
-        setInternalValue(mask ? applyMask(String(value), mask) : String(value))
+        setInternalValue(String(value))
       }
-    }, [value, mask])
+    }, [value])
+
+    const getDisplayValue = () => {
+      const valStr = String(value !== undefined ? value : internalValue)
+      if (!mask) return valStr
+
+      if (mask === 'currency') {
+        const numStr = valStr.replace(/\D/g, '')
+        if (!numStr) return ''
+        if (isFocused) {
+          return numStr
+        } else {
+          return aplicarMascara(numStr, 'currency')
+        }
+      }
+
+      return aplicarMascara(valStr, mask)
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       let val = e.target.value
-      if (mask) {
-        val = applyMask(val, mask)
-        e.target.value = val
+      if (mask === 'currency') {
+        val = val.replace(/\D/g, '')
+      } else if (mask) {
+        val = aplicarMascara(val, mask)
       }
+      e.target.value = val
       setInternalValue(val)
       if (onChange) onChange(e)
     }
 
-    const isControlled = value !== undefined
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      setIsFocused(true)
+      if (onFocus) onFocus(e)
+    }
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      setIsFocused(false)
+      if (onBlur) onBlur(e)
+    }
 
     return (
       <div className="flex flex-col gap-1.5 w-full">
-        <input
-          ref={ref}
-          value={isControlled ? (mask ? applyMask(String(value), mask) : value) : internalValue}
-          onChange={handleChange}
-          className={cn(
-            'flex h-11 w-full rounded-[var(--radius-md)] border bg-surface px-3 py-2 text-body text-text-primary ring-offset-background file:border-0 file:bg-transparent file:text-body file:font-medium placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 transition-all',
-            error
-              ? 'border-error focus-visible:ring-error'
-              : 'border-border hover:border-text-secondary/50 focus-visible:ring-ring focus-visible:border-primary',
-            className,
+        <div className="relative w-full">
+          <input
+            ref={ref}
+            type={actualType}
+            value={getDisplayValue()}
+            onChange={handleChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            className={cn(
+              'flex h-11 w-full rounded-[var(--radius-md)] border bg-surface px-3 py-2 text-body text-text-primary ring-offset-background file:border-0 file:bg-transparent file:text-body file:font-medium placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 transition-all',
+              isPassword ? 'pr-10' : '',
+              error
+                ? 'border-error focus-visible:ring-error'
+                : 'border-border hover:border-text-secondary/50 focus-visible:ring-ring focus-visible:border-primary',
+              className,
+            )}
+            {...props}
+          />
+          {isPassword && (
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary focus:outline-none"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           )}
-          {...props}
-        />
+        </div>
         {error && (
           <span className="text-body-sm text-error animate-fade-in" role="alert">
             {error}

@@ -14,8 +14,12 @@ import {
 } from '@/components/ui/card'
 import { BrainCircuit } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { BRAND } from '@/config/branding'
+import pb from '@/lib/pocketbase/client'
+import { useBranding } from '@/hooks/use-branding'
 
 export default function Login() {
+  const { systemSettings } = useBranding()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -42,11 +46,19 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4">
       <div className="w-full max-w-md space-y-4 animate-fade-in-up">
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="bg-teal-600 p-3 rounded-xl mb-4">
-            <BrainCircuit className="h-8 w-8 text-white" />
-          </div>
+          {systemSettings?.logo ? (
+            <img
+              src={pb.files.getURL(systemSettings, systemSettings.logo)}
+              alt={BRAND.nome}
+              className="w-[120px] mb-4 object-contain"
+            />
+          ) : (
+            <div className="bg-primary p-3 rounded-xl mb-4">
+              <BrainCircuit className="h-8 w-8 text-white" />
+            </div>
+          )}
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Bem-vindo de volta</h1>
-          <p className="text-muted-foreground mt-2">Acesse sua conta para continuar</p>
+          <p className="text-muted-foreground mt-2">Acesse sua conta no {BRAND.nome}</p>
         </div>
 
         <Card className="shadow-lg border-0">
@@ -79,11 +91,7 @@ export default function Login() {
                   required
                 />
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-                disabled={loading}
-              >
+              <Button type="submit" className="w-full text-white" disabled={loading}>
                 {loading ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
@@ -91,7 +99,7 @@ export default function Login() {
           <CardFooter className="flex flex-col gap-4 border-t pt-6 bg-gray-50/50 rounded-b-xl">
             <div className="text-sm text-center text-muted-foreground">
               Não tem uma conta?{' '}
-              <Link to="/signup" className="text-teal-600 hover:underline font-medium">
+              <Link to="/signup" className="text-primary hover:underline font-medium">
                 Cadastre-se
               </Link>
             </div>

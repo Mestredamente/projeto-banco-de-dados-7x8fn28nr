@@ -31,6 +31,11 @@ const config = {
           hover: 'var(--color-secondary-hover)',
           foreground: 'var(--secondary-foreground)',
         },
+        tertiary: {
+          DEFAULT: 'var(--color-tertiary)',
+        },
+        neutral: 'var(--color-neutral)',
+        dark: 'var(--color-dark)',
         accent: {
           DEFAULT: 'var(--color-accent)',
           foreground: 'var(--accent-foreground)',
@@ -102,12 +107,12 @@ const config = {
         '3xl': 'var(--spacing-3xl)',
       },
       borderRadius: {
-        sm: 'var(--radius-sm)',
-        md: 'var(--radius-md)',
-        lg: 'var(--radius-lg)',
-        xl: 'var(--radius-xl)',
-        full: 'var(--radius-full)',
-        DEFAULT: 'var(--radius)',
+        sm: '8px',
+        md: '8px',
+        lg: '8px',
+        xl: '12px',
+        full: '9999px',
+        DEFAULT: '8px',
       },
       boxShadow: {
         sm: 'var(--shadow-sm)',

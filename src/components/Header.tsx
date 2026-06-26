@@ -38,6 +38,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Breadcrumbs } from './Breadcrumbs'
+import { useBranding } from '@/hooks/use-branding'
+import { BRAND } from '@/config/branding'
 
 interface HeaderProps {
   sidebarCollapsed?: boolean
@@ -49,6 +51,7 @@ export function Header({ sidebarCollapsed, setSidebarCollapsed }: HeaderProps) {
   const { activeProfile, userRoles, switchContext, getHomeRoute } = useProfile()
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState<any[]>([])
+  const { systemSettings } = useBranding()
 
   const loadNotifications = async () => {
     if (!user) return
@@ -131,12 +134,22 @@ export function Header({ sidebarCollapsed, setSidebarCollapsed }: HeaderProps) {
           variant="ghost"
           size="icon"
           onClick={() => setSidebarCollapsed?.(!sidebarCollapsed)}
-          className="shrink-0 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="shrink-0 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 lg:hidden"
         >
           <Menu className="h-5 w-5" />
         </Button>
 
-        <Breadcrumbs />
+        {systemSettings?.logo && (
+          <img
+            src={pb.files.getURL(systemSettings, systemSettings.logo)}
+            alt={BRAND.nome}
+            className="h-6 object-contain lg:hidden shrink-0"
+          />
+        )}
+
+        <div className="hidden lg:block">
+          <Breadcrumbs />
+        </div>
       </div>
 
       <div className="flex items-center space-x-2 md:space-x-4 shrink-0">

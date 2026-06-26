@@ -1,0 +1,17 @@
+export const BRAND = {
+  nome: 'Syntrapsi',
+  nomeCompleto: 'Syntrapsi — Plataforma de Inteligência Clínica',
+  tagline: 'Tecnologia que entende de psique',
+  dominio: 'syntrapsi.com.br',
+  corPrimary: '#1B4D5C',
+  corSecondary: '#C86A5E',
+  corTertiary: '#D49488',
+  corAcentoSuave: '#F0E6E2',
+  corNeutral: '#F5F3F0',
+  corDark: '#1A1D21',
+  fontHeading: "'Inter', sans-serif",
+  fontBody: "'DM Sans', sans-serif",
+  fontButton: "'Inter', sans-serif",
+  borderRadius: '8px',
+  borderRadiusCard: '12px',
+}

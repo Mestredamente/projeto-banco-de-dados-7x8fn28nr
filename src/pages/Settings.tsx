@@ -851,7 +851,7 @@ export default function Settings() {
 
                 <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-4">
                   <h3 className="text-lg font-medium flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-teal-600" /> Simulação de Alerta
+                    <ShieldCheck className="w-5 h-5 text-primary" /> Simulação de Alerta
                   </h3>
                   <p className="text-sm text-gray-500 max-w-2xl">
                     Teste o sistema de detecção utilizando o conjunto de palavras-gatilho
@@ -861,7 +861,7 @@ export default function Settings() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-teal-200 text-teal-700 hover:bg-teal-50 mt-2"
+                    className="border-primary/20 text-primary hover:bg-primary/10 mt-2"
                     onClick={() => setSimulateCrisisOpen(true)}
                   >
                     Abrir Simulador
@@ -929,7 +929,7 @@ export default function Settings() {
                   <AlertDescription>
                     Nesta versão, as integrações nativas são gerenciadas globalmente pelo
                     administrador do sistema. O seu status reflete a conectividade atual da
-                    plataforma Syntra.
+                    plataforma Syntrapsi.
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -1028,7 +1028,7 @@ export default function Settings() {
             <Button
               type="submit"
               disabled={loading}
-              className="bg-teal-600 hover:bg-teal-700 text-white px-8"
+              className="bg-primary hover:bg-primary-hover text-white px-8"
               size="lg"
             >
               {loading ? 'Salvando...' : 'Salvar Alterações'}

@@ -22,6 +22,7 @@ import { useProfile } from '@/hooks/use-profile'
 import { useBranding } from '@/hooks/use-branding'
 import pb from '@/lib/pocketbase/client'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { BRAND } from '@/config/branding'
 
 interface SidebarProps {
   collapsed?: boolean
@@ -32,7 +33,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const { pathname } = useLocation()
   const { user } = useAuth()
   const { activeProfile, hasPermission } = useProfile()
-  const { clinic } = useBranding()
+  const { clinic, systemSettings } = useBranding()
 
   const ALL_NAV_ITEMS = [
     {
@@ -42,6 +43,12 @@ export function Sidebar({ collapsed }: SidebarProps) {
       module: 'paciente_portal',
     },
     { name: 'Portal do Gestor', path: '/gestao', icon: ShieldAlert, module: 'gestao_assinantes' },
+    {
+      name: 'Config. do Sistema',
+      path: '/gestao/configuracoes',
+      icon: Settings,
+      module: 'gestao_assinantes',
+    },
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, module: 'dashboard' },
     { name: 'Home da Clínica', path: '/clinica/home', icon: Building2, module: 'gestao_clinica' },
     { name: 'Recepção', path: '/secretaria/home', icon: LayoutDashboard, module: 'dashboard' },
@@ -139,11 +146,17 @@ export function Sidebar({ collapsed }: SidebarProps) {
             alt={clinic.name}
             className="h-8 max-w-full object-contain"
           />
+        ) : systemSettings?.logo && !collapsed ? (
+          <img
+            src={pb.files.getURL(systemSettings, systemSettings.logo)}
+            alt={BRAND.nome}
+            className="h-[32px] max-w-full object-contain"
+          />
         ) : (
           <span className={cn('font-bold text-white truncate', collapsed ? 'text-xl' : 'text-xl')}>
             {collapsed
-              ? clinic?.name?.charAt(0) || 'S'
-              : clinic?.name || clinic?.razao_social || 'Syntra'}
+              ? clinic?.name?.charAt(0) || BRAND.nome.charAt(0)
+              : clinic?.name || clinic?.razao_social || BRAND.nome}
           </span>
         )}
       </div>
@@ -214,7 +227,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
           <HelpCircle className={cn('h-[20px] w-[20px]', collapsed ? '' : 'mr-3')} />
           {!collapsed && <span>Ajuda</span>}
         </Link>
-        {!collapsed && <div className="px-2 text-xs text-white/30 mt-2">Syntra v1.0.0</div>}
+        {!collapsed && <div className="px-2 text-xs text-white/30 mt-2">{BRAND.nome} v1.0.0</div>}
       </div>
     </div>
   )

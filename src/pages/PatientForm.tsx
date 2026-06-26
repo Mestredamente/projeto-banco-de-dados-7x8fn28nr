@@ -9,7 +9,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { ArrowLeft, User, ShieldCheck, AlertCircle } from 'lucide-react'
+import { ArrowLeft, User, ShieldCheck, AlertCircle, MapPin } from 'lucide-react'
+import { PhoneInput } from '@/components/system/PhoneInput'
+import { Input as MaskedInput } from '@/components/system/Input'
+import { lookupCEP, lookupCPF } from '@/lib/lookups'
 
 export default function PatientForm() {
   const { id } = useParams()
@@ -28,6 +31,12 @@ export default function PatientForm() {
     notes: '',
     minor_guardian_name: '',
     minor_guardian_cpf: '',
+    address_cep: '',
+    address_street: '',
+    address_number: '',
+    address_neighborhood: '',
+    address_city: '',
+    address_state: '',
     portal_permissions: {
       diary: true,
       financial: true,
@@ -66,6 +75,12 @@ export default function PatientForm() {
             notes: record.notes || '',
             minor_guardian_name: record.minor_guardian_name || '',
             minor_guardian_cpf: record.minor_guardian_cpf || '',
+            address_cep: record.address_cep || '',
+            address_street: record.address_street || '',
+            address_number: record.address_number || '',
+            address_neighborhood: record.address_neighborhood || '',
+            address_city: record.address_city || '',
+            address_state: record.address_state || '',
             portal_permissions: {
               diary: true,
               financial: true,
@@ -77,6 +92,41 @@ export default function PatientForm() {
         })
     }
   }, [id])
+
+  useEffect(() => {
+    const cep = formData.address_cep?.replace(/\D/g, '') || ''
+    if (cep.length === 8) {
+      lookupCEP(cep).then((data) => {
+        if (data) {
+          setFormData((prev) => ({
+            ...prev,
+            address_street: prev.address_street || data.street,
+            address_neighborhood: prev.address_neighborhood || data.neighborhood,
+            address_city: prev.address_city || data.city,
+            address_state: prev.address_state || data.state,
+          }))
+          toast({ title: 'Endereço encontrado!' })
+        }
+      })
+    }
+  }, [formData.address_cep])
+
+  useEffect(() => {
+    const cpf = formData.cpf?.replace(/\D/g, '') || ''
+    if (cpf.length === 11 && !id) {
+      lookupCPF(cpf).then((data) => {
+        if (data) {
+          setFormData((prev) => ({
+            ...prev,
+            name: prev.name || data.name,
+            date_of_birth:
+              prev.date_of_birth || (data.date_of_birth ? data.date_of_birth.substring(0, 10) : ''),
+          }))
+          toast({ title: 'Dados encontrados para o CPF informado.' })
+        }
+      })
+    }
+  }, [formData.cpf, id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -167,15 +217,15 @@ export default function PatientForm() {
               </div>
               <div className="space-y-2">
                 <Label>Telefone</Label>
-                <Input
-                  placeholder="(11) 99999-9999"
+                <PhoneInput
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, phone: val })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>CPF</Label>
-                <Input
+                <MaskedInput
+                  mask="cpf"
                   placeholder="000.000.000-00"
                   value={formData.cpf}
                   onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
@@ -211,7 +261,8 @@ export default function PatientForm() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-amber-900">CPF do Responsável Legal *</Label>
-                      <Input
+                      <MaskedInput
+                        mask="cpf"
                         required={isMinor}
                         placeholder="000.000.000-00"
                         className="bg-white border-amber-200"
@@ -237,6 +288,72 @@ export default function PatientForm() {
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50/50 border-b pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-teal-600" />
+              Endereço
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label>CEP</Label>
+                <MaskedInput
+                  mask="cep"
+                  placeholder="00000-000"
+                  value={formData.address_cep}
+                  onChange={(e) => setFormData({ ...formData, address_cep: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Logradouro</Label>
+                <Input
+                  placeholder="Rua, Avenida..."
+                  value={formData.address_street}
+                  onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Número</Label>
+                <Input
+                  placeholder="123"
+                  value={formData.address_number}
+                  onChange={(e) => setFormData({ ...formData, address_number: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Bairro</Label>
+                <Input
+                  placeholder="Bairro"
+                  value={formData.address_neighborhood}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address_neighborhood: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Cidade / Estado</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Cidade"
+                    value={formData.address_city}
+                    className="flex-1"
+                    onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
+                  />
+                  <Input
+                    placeholder="UF"
+                    maxLength={2}
+                    className="w-16 uppercase"
+                    value={formData.address_state}
+                    onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
