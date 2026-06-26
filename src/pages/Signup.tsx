@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Card,
   CardContent,
@@ -13,336 +12,211 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { toast } from '@/hooks/use-toast'
-import { maskCPF, maskCRP, maskPhone } from '@/lib/utils'
-
-function validateCPF(cpf: string) {
-  cpf = cpf.replace(/[^\d]+/g, '')
-  if (cpf.length !== 11 || !!cpf.match(/(\d)\1{10}/)) return false
-  let sum = 0,
-    rest
-  for (let i = 1; i <= 9; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i)
-  rest = (sum * 10) % 11
-  if (rest === 10 || rest === 11) rest = 0
-  if (rest !== parseInt(cpf.substring(9, 10))) return false
-  sum = 0
-  for (let i = 1; i <= 10; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i)
-  rest = (sum * 10) % 11
-  if (rest === 10 || rest === 11) rest = 0
-  if (rest !== parseInt(cpf.substring(10, 11))) return false
-  return true
-}
+import { maskCPF, maskPhone, maskCRP } from '@/lib/masks'
+import pb from '@/lib/pocketbase/client'
+import { useToast } from '@/hooks/use-toast'
 
 export default function Signup() {
-  const [step, setStep] = useState(1)
-  const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
-
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [clinicName, setClinicName] = useState('')
-
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
+    name: '',
     email: '',
     password: '',
-    name: '',
     cpf: '',
-    crp: '',
     phone: '',
-    acceptedTerms: false,
-    acceptedLgpd: false,
-    ccName: '',
-    ccNumber: '',
-    ccExpiry: '',
-    ccCvv: '',
+    crp: '',
+    role: 'psicologo_autonomo',
   })
 
-  const updateForm = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    let v = value
-    if (name === 'cpf') v = maskCPF(value)
-    if (name === 'crp') v = maskCRP(value)
-    if (name === 'phone') v = maskPhone(value)
-    setForm((prev) => ({ ...prev, [name]: v }))
-  }
-
-  const handleNext = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (step === 2) {
-      if (!validateCPF(form.cpf)) {
-        toast({ title: 'Atenção', description: 'CPF inválido.', variant: 'destructive' })
-        return
-      }
-      const crpValid = /^\d{2}\/\d{5,6}$/.test(form.crp)
-      if (!crpValid) {
-        toast({
-          title: 'Atenção',
-          description: 'CRP deve estar no formato XX/XXXXX.',
-          variant: 'destructive',
-        })
-        return
-      }
-      if (isAdmin && !clinicName.trim()) {
-        toast({
-          title: 'Atenção',
-          description: 'Nome da Clínica é obrigatório.',
-          variant: 'destructive',
-        })
-        return
-      }
-    }
-    setStep((s) => s + 1)
-  }
-
-  const handleBack = () => setStep((s) => s - 1)
+  const crpValid = form.crp.length === 0 || /^\d{2}\/\d{4,7}-\d$/.test(form.crp)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.acceptedTerms || !form.acceptedLgpd) {
-      toast({
-        title: 'Atenção',
-        description: 'Você deve aceitar os termos e a LGPD.',
-        variant: 'destructive',
-      })
-      return
-    }
-    setLoading(true)
-    const { error } = await signUp({
-      ...form,
-      role: isAdmin ? 'admin_clinica' : 'psicologo_autonomo',
-      clinic_name: isAdmin ? clinicName : undefined,
-    })
-    setLoading(false)
 
-    if (error) {
+    if (form.role === 'psicologo_autonomo' || form.role === 'psicologo_vinculado') {
+      if (!crpValid) {
+        toast({
+          title: 'CRP Inválido',
+          description: 'Verifique o formato do CRP (ex: 12/34567-8)',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (form.crp.length === 0) {
+        toast({
+          title: 'CRP Obrigatório',
+          description: 'Por favor, informe seu CRP.',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
+    setLoading(true)
+    try {
+      const res = await signUp(form.email, form.password)
+      if (res.error) throw res.error
+
+      if (pb.authStore.record) {
+        await pb.collection('users').update(pb.authStore.record.id, {
+          name: form.name,
+          cpf: form.cpf,
+          phone: form.phone,
+          crp:
+            form.role === 'psicologo_autonomo' || form.role === 'psicologo_vinculado'
+              ? form.crp
+              : '',
+          role: form.role,
+        })
+      }
+
       toast({
-        title: 'Erro',
-        description: 'Não foi possível criar a conta. Verifique os dados.',
+        title: 'Conta criada',
+        description: 'Seu cadastro foi realizado com sucesso.',
+      })
+      navigate('/')
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao criar conta',
+        description: err.message || 'Tente novamente mais tarde.',
         variant: 'destructive',
       })
-    } else {
-      toast({ title: 'Sucesso', description: 'Conta criada com sucesso! Bem-vindo.' })
-      navigate('/')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <Card className="w-full max-w-lg shadow-lg border-t-4 border-t-teal-500">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Nova Conta</CardTitle>
-          <CardDescription>Crie sua conta e teste grátis por 30 dias</CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-lg shadow-lg">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
+          <CardDescription>
+            Preencha os dados abaixo para se cadastrar na plataforma
+          </CardDescription>
         </CardHeader>
-        <form onSubmit={step === 3 ? handleSubmit : handleNext}>
-          <CardContent className="space-y-4">
-            {step === 1 && (
-              <div className="space-y-4 animate-fade-in">
-                <h3 className="font-semibold text-lg border-b pb-2">1. Credenciais</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    value={form.email}
-                    onChange={updateForm}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    minLength={8}
-                    value={form.password}
-                    onChange={updateForm}
-                  />
-                </div>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome Completo</Label>
+              <Input
+                id="name"
+                required
+                placeholder="Seu nome"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  placeholder="seu@email.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
               </div>
-            )}
 
-            {step === 2 && (
-              <div className="space-y-4 animate-fade-in">
-                <h3 className="font-semibold text-lg border-b pb-2">2. Dados Profissionais</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input id="name" name="name" required value={form.name} onChange={updateForm} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cpf">CPF</Label>
-                    <Input
-                      id="cpf"
-                      name="cpf"
-                      required
-                      value={form.cpf}
-                      onChange={updateForm}
-                      placeholder="000.000.000-00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="crp">CRP</Label>
-                    <Input
-                      id="crp"
-                      name="crp"
-                      required
-                      value={form.crp}
-                      onChange={updateForm}
-                      placeholder="00/00000"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    required
-                    value={form.phone}
-                    onChange={updateForm}
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
-
-                <div className="pt-4 border-t space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isAdmin"
-                      checked={isAdmin}
-                      onCheckedChange={(c) => setIsAdmin(c as boolean)}
-                    />
-                    <Label htmlFor="isAdmin">Sou administrador de clínica</Label>
-                  </div>
-                  {isAdmin && (
-                    <div className="space-y-2 animate-fade-in">
-                      <Label htmlFor="clinicName">Nome da Clínica</Label>
-                      <Input
-                        id="clinicName"
-                        value={clinicName}
-                        onChange={(e) => setClinicName(e.target.value)}
-                        required
-                      />
-                    </div>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  placeholder="Mínimo 8 caracteres"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
               </div>
-            )}
+            </div>
 
-            {step === 3 && (
-              <div className="space-y-4 animate-fade-in">
-                <h3 className="font-semibold text-lg border-b pb-2">3. Assinatura & Termos</h3>
-
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Direito de arrependimento em 7 dias:</strong> Você pode cancelar sua
-                  assinatura nos primeiros 7 dias sem qualquer cobrança. Após 30 dias de teste
-                  grátis, o plano será renovado automaticamente.
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Cartão de Crédito (para ativação do trial)</Label>
-                  <Input
-                    name="ccName"
-                    placeholder="Nome impresso no Cartão"
-                    required
-                    value={form.ccName}
-                    onChange={updateForm}
-                  />
-                  <Input
-                    name="ccNumber"
-                    placeholder="Número do Cartão"
-                    required
-                    value={form.ccNumber}
-                    onChange={updateForm}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      name="ccExpiry"
-                      placeholder="MM/AA"
-                      required
-                      value={form.ccExpiry}
-                      onChange={updateForm}
-                    />
-                    <Input
-                      name="ccCvv"
-                      placeholder="CVV"
-                      required
-                      value={form.ccCvv}
-                      onChange={updateForm}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4 mt-6">
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="terms"
-                      checked={form.acceptedTerms}
-                      onCheckedChange={(c) =>
-                        setForm((p) => ({ ...p, acceptedTerms: c as boolean }))
-                      }
-                    />
-                    <Label htmlFor="terms" className="text-sm font-normal leading-tight">
-                      Li e aceito a{' '}
-                      <a href="#" className="text-teal-600 underline">
-                        Política de Privacidade
-                      </a>{' '}
-                      e os{' '}
-                      <a href="#" className="text-teal-600 underline">
-                        Termos de Uso
-                      </a>
-                    </Label>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="lgpd"
-                      checked={form.acceptedLgpd}
-                      onCheckedChange={(c) =>
-                        setForm((p) => ({ ...p, acceptedLgpd: c as boolean }))
-                      }
-                    />
-                    <Label htmlFor="lgpd" className="text-sm font-normal leading-tight">
-                      Consentimento LGPD para tratamento de dados sensíveis
-                    </Label>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
+                  id="cpf"
+                  required
+                  placeholder="000.000.000-00"
+                  value={form.cpf}
+                  onChange={(e) => setForm({ ...form, cpf: maskCPF(e.target.value) })}
+                />
               </div>
-            )}
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            {step > 1 ? (
-              <Button type="button" variant="outline" onClick={handleBack}>
-                Voltar
-              </Button>
-            ) : (
-              <div />
-            )}
 
-            {step < 3 ? (
-              <Button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white">
-                Próximo
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                className="bg-teal-600 hover:bg-teal-700 text-white"
-                disabled={loading}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone / WhatsApp</Label>
+                <Input
+                  id="phone"
+                  required
+                  placeholder="(00) 00000-0000"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: maskPhone(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Perfil de Uso</Label>
+              <select
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? 'Processando...' : 'Criar conta gratuita por 30 dias'}
-              </Button>
+                <option value="psicologo_autonomo">Psicólogo Autônomo</option>
+                <option value="admin_clinica">Administrador de Clínica</option>
+                <option value="paciente">Paciente</option>
+              </select>
+            </div>
+
+            {(form.role === 'psicologo_autonomo' || form.role === 'psicologo_vinculado') && (
+              <div className="space-y-2">
+                <Label htmlFor="crp">CRP</Label>
+                <Input
+                  id="crp"
+                  required={
+                    form.role === 'psicologo_autonomo' || form.role === 'psicologo_vinculado'
+                  }
+                  value={form.crp}
+                  onChange={(e) => setForm({ ...form, crp: maskCRP(e.target.value) })}
+                  placeholder="12/34567-8"
+                  className={
+                    !crpValid && form.crp.length > 0
+                      ? 'border-destructive focus-visible:ring-destructive'
+                      : ''
+                  }
+                />
+                {!crpValid && form.crp.length > 0 && (
+                  <p className="text-xs text-destructive">
+                    O formato do CRP deve ser semelhante a 12/34567-8
+                  </p>
+                )}
+              </div>
             )}
-          </CardFooter>
-        </form>
-        {step === 1 && (
-          <div className="px-6 pb-6 text-center text-sm text-gray-500">
+
+            <Button
+              type="submit"
+              className="w-full mt-6"
+              disabled={loading || (!crpValid && form.crp.length > 0)}
+            >
+              {loading ? 'Cadastrando...' : 'Criar Conta'}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex justify-center border-t p-4">
+          <p className="text-sm text-muted-foreground">
             Já tem uma conta?{' '}
-            <button onClick={() => navigate('/login')} className="text-teal-600 hover:underline">
+            <Link to="/login" className="text-primary font-medium hover:underline">
               Faça login
-            </button>
-          </div>
-        )}
+            </Link>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   )

@@ -1,41 +1,45 @@
 import { useEffect, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
-import { Card, CardContent } from '@/components/system/Card'
-import { BRAND } from '@/config/branding'
+import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Terms() {
   const [content, setContent] = useState<string>('')
-  const [date, setDate] = useState<string>('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     pb.collection('system_settings')
-      .getList(1, 1)
+      .getFirstListItem('')
       .then((res) => {
-        if (res.items.length > 0) {
-          setContent(res.items[0].terms_of_use || 'Termos não definidos.')
-          setDate(res.items[0].document_updated_at || '')
-        }
+        setContent(res.terms_of_use || '<p>Termos de Uso não definidos no sistema.</p>')
       })
-      .catch(console.error)
+      .catch(() => {
+        setContent('<p>Termos de Uso indisponíveis no momento.</p>')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-12">
-      <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Termos de Uso</h1>
-          <p className="text-gray-500 mt-2">{BRAND.nomeCompleto}</p>
-          {date && (
-            <p className="text-sm text-gray-400 mt-1">
-              Última atualização: {new Date(date).toLocaleDateString('pt-BR')}
-            </p>
+    <div className="container mx-auto py-12 px-4 max-w-4xl animate-fade-in">
+      <h1 className="text-3xl font-bold mb-8">Termos de Uso - Syntrapsi</h1>
+      <Card className="shadow-sm">
+        <CardContent className="p-8 prose prose-blue max-w-none prose-headings:text-primary prose-a:text-blue-600">
+          {loading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-[90%]" />
+              <Skeleton className="h-4 w-[95%]" />
+              <Skeleton className="h-4 w-[80%]" />
+              <Skeleton className="h-4 w-full mt-8" />
+              <Skeleton className="h-4 w-[85%]" />
+            </div>
+          ) : (
+            <div
+              dangerouslySetInnerHTML={{ __html: content.replace(/Syntra(?!\w)/g, 'Syntrapsi') }}
+            />
           )}
-        </div>
-
-        <Card>
-          <CardContent className="p-8 prose max-w-none whitespace-pre-wrap">{content}</CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
