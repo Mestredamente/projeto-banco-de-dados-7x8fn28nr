@@ -238,6 +238,14 @@ label {
   }
 }
 
+.antitranslate {
+  translate: no;
+}
+
+[data-antitranslate] * {
+  -webkit-text-fill-color: currentColor;
+}
+
 @layer components {
   .skeleton {
     @apply relative overflow-hidden;
