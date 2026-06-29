@@ -123,7 +123,17 @@ export default function PatientInvitation() {
       })
       navigate('/login')
     } catch (err: any) {
-      if (err?.response?.message === 'USER_EXISTS' || err?.message === 'USER_EXISTS') {
+      const errMessage = err?.response?.message || err?.message || ''
+      const errData = err?.response?.data || {}
+      const cpfError = errData?.cpf?.message || ''
+      const isDuplicate =
+        errMessage === 'USER_EXISTS' ||
+        errMessage === 'Este CPF ou Email já está cadastrado.' ||
+        cpfError.toLowerCase().includes('value must be unique') ||
+        errMessage.toLowerCase().includes('value must be unique') ||
+        errMessage.toLowerCase().includes('cpf')
+
+      if (isDuplicate) {
         toast({
           title: 'Cadastro existente',
           description: 'Você já possui cadastro. Faça login para continuar.',
@@ -134,7 +144,7 @@ export default function PatientInvitation() {
       }
       toast({
         title: 'Erro no cadastro',
-        description: err?.response?.message || 'Verifique seus dados e tente novamente.',
+        description: errMessage || 'Verifique seus dados e tente novamente.',
         variant: 'destructive',
       })
     } finally {
@@ -242,13 +252,11 @@ export default function PatientInvitation() {
                       <Input
                         {...field}
                         placeholder="(00) 00000-0000"
-                        readOnly={phoneWasPreFilled}
-                        className={phoneWasPreFilled ? 'bg-gray-100' : ''}
                         onChange={(e) => {
                           field.onChange(aplicarMascara(e.target.value, 'phone'))
                         }}
                       />
-                    </FormControl>
+                    </FormControl>{' '}
                     <FormMessage />
                   </FormItem>
                 )}

@@ -144,6 +144,13 @@ routerAdd('POST', '/backend/v1/invitations/{token}/accept', (e) => {
       return e.badRequestError('USER_EXISTS')
     }
     if (err.message && err.message.includes('UNIQUE constraint failed')) {
+      const isCpfConflict = err.message.includes('cpf')
+      if (isCpfConflict) {
+        return e.json(400, {
+          message: 'USER_EXISTS',
+          data: { cpf: { code: 'validation_not_unique', message: 'Cpf: Value must be unique' } },
+        })
+      }
       return e.badRequestError('Este CPF ou Email já está cadastrado.')
     }
     return e.badRequestError(err.message || 'Erro ao processar convite.')
