@@ -114,6 +114,11 @@ routerAdd('POST', '/backend/v1/invitations/{token}/accept', (e) => {
         txApp.save(patient)
       }
 
+      if (!patient.getString('profile')) {
+        patient.set('profile', user.id)
+        txApp.save(patient)
+      }
+
       try {
         txApp.findFirstRecordByFilter(
           'patient_professionals',
