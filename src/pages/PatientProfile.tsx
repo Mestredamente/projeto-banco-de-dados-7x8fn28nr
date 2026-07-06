@@ -31,7 +31,6 @@ import { PatientPreferencesTab } from '@/components/patients/PatientPreferencesT
 import { PatientInsights } from '@/components/patients/PatientInsights'
 import { PatientScales } from '@/components/patients/PatientScales'
 import { PatientCrisisInterventions } from '@/components/patients/PatientCrisisInterventions'
-import { PatientConsentOverlay } from '@/components/patients/PatientConsentOverlay'
 
 export default function PatientProfile() {
   const { id } = useParams()
@@ -81,8 +80,6 @@ export default function PatientProfile() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6 animate-fade-in">
-      <PatientConsentOverlay patientId={patient.id} />
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
           <Button variant="outline" size="icon" onClick={() => navigate('/patients')}>

@@ -3,8 +3,6 @@ import { useAuth } from '@/hooks/use-auth'
 import { useProfile } from '@/hooks/use-profile'
 import { useToast } from '@/hooks/use-toast'
 import { useEffect, useRef } from 'react'
-import { PatientConsentOverlay } from './patients/PatientConsentOverlay'
-
 interface RouteGuardProps {
   allowedModules?: string[]
 }
@@ -52,15 +50,6 @@ export function RouteGuard({ allowedModules }: RouteGuardProps) {
       console.error('Erro na verificação de permissão:', error)
       return <Navigate to={getHomeRoute(activeProfile?.id)} replace />
     }
-  }
-
-  if (user?.role === 'paciente') {
-    return (
-      <>
-        <PatientConsentOverlay />
-        <Outlet />
-      </>
-    )
   }
 
   return <Outlet />

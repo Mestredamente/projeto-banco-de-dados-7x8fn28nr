@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
@@ -7,23 +7,54 @@ import { HelpCircle, ShieldAlert } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 
-interface PatientConsentOverlayProps {
-  patient: any
-  onComplete: (updatedPatient: any) => void
+interface Patient {
+  id: string
+  consent_clinical_at?: string | null
+  consent_breach_at?: string | null
+  consent_risk_at?: string | null
+  consent_research_at?: string | null
+  consent_referral_at?: string | null
+  portal_permissions?: Record<string, any> | null
+  [key: string]: any
 }
 
-export function PatientConsentOverlay({ patient, onComplete }: PatientConsentOverlayProps) {
+interface PatientConsentOverlayProps {
+  patient: Patient | null | undefined
+  onClose?: () => void
+  onComplete?: (updatedPatient: any) => void
+}
+
+export function PatientConsentOverlay({
+  patient,
+  onClose,
+  onComplete,
+}: PatientConsentOverlayProps) {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [consents, setConsents] = useState({
-    clinical: !!patient.consent_clinical_at,
-    risk: !!patient.consent_risk_at,
-    research: !!patient.consent_research_at,
-    referral: !!patient.consent_referral_at,
+  const [consentData, setConsentData] = useState({
+    clinical: false,
+    breach: false,
+    research: false,
+    referral: false,
   })
 
+  useEffect(() => {
+    if (patient) {
+      setConsentData({
+        clinical: patient.consent_clinical_at ? true : false,
+        breach: patient.consent_breach_at || patient.consent_risk_at ? true : false,
+        research: patient.consent_research_at ? true : false,
+        referral: patient.consent_referral_at ? true : false,
+      })
+    }
+  }, [patient])
+
+  if (!patient) {
+    return null
+  }
+
   const handleSave = async () => {
-    if (!consents.clinical) {
+    if (!consentData.clinical) {
       toast({
         title: 'Atenção',
         description: 'É necessário aceitar o consentimento de atendimento clínico para continuar.',
@@ -35,18 +66,19 @@ export function PatientConsentOverlay({ patient, onComplete }: PatientConsentOve
     setLoading(true)
     try {
       const now = new Date().toISOString()
+      const breachDate = patient.consent_breach_at || patient.consent_risk_at
 
       const updateData: Record<string, any> = {
-        consent_clinical_at: consents.clinical ? patient.consent_clinical_at || now : null,
-        consent_risk_at: consents.risk ? patient.consent_risk_at || now : null,
-        consent_research_at: consents.research ? patient.consent_research_at || now : null,
-        consent_referral_at: consents.referral ? patient.consent_referral_at || now : null,
-        consent_form_signed: consents.clinical,
-        research_consent: consents.research,
+        consent_clinical_at: consentData.clinical ? patient.consent_clinical_at || now : null,
+        consent_risk_at: consentData.breach ? breachDate || now : null,
+        consent_research_at: consentData.research ? patient.consent_research_at || now : null,
+        consent_referral_at: consentData.referral ? patient.consent_referral_at || now : null,
+        consent_form_signed: consentData.clinical,
+        research_consent: consentData.research,
         first_access: false,
         portal_permissions: {
           ...(patient.portal_permissions || {}),
-          life_protection_consent: consents.risk,
+          life_protection_consent: consentData.breach,
         },
       }
 
@@ -54,15 +86,15 @@ export function PatientConsentOverlay({ patient, onComplete }: PatientConsentOve
 
       try {
         await pb.collection('audit_logs').create({
-          actor: user.id,
+          actor: user?.id || '',
           action: 'grant_consent',
           table_name: 'patients',
           record_id: patient.id,
           new_data: {
-            clinical: consents.clinical,
-            risk: consents.risk,
-            research: consents.research,
-            referral: consents.referral,
+            clinical: consentData.clinical,
+            breach: consentData.breach,
+            research: consentData.research,
+            referral: consentData.referral,
           },
           ip_address: '0.0.0.0',
           user_agent: navigator.userAgent,
@@ -72,7 +104,12 @@ export function PatientConsentOverlay({ patient, onComplete }: PatientConsentOve
       }
 
       toast({ title: 'Consentimentos salvos com sucesso!' })
-      onComplete(updated)
+      if (onComplete) {
+        onComplete(updated)
+      }
+      if (onClose) {
+        onClose()
+      }
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' })
     } finally {
@@ -88,7 +125,7 @@ export function PatientConsentOverlay({ patient, onComplete }: PatientConsentOve
       text: 'Autorizo o armazenamento e tratamento dos meus dados para fins de atendimento clínico, conforme a LGPD.',
     },
     {
-      key: 'risk' as const,
+      key: 'breach' as const,
       label: 'Quebra de Sigilo (Recomendado)',
       tooltip: 'Necessário para utilizar o Diário de Sentimentos no portal.',
       text: 'Autorizo a quebra de sigilo em caso de risco iminente à minha vida ou de terceiros, conforme previsto no Código de Ética do Psicólogo e na LGPD.',
@@ -136,11 +173,11 @@ export function PatientConsentOverlay({ patient, onComplete }: PatientConsentOve
                 <div
                   key={item.key}
                   className="flex items-start space-x-3 cursor-pointer p-4 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100"
-                  onClick={() => setConsents((s) => ({ ...s, [item.key]: !s[item.key] }))}
+                  onClick={() => setConsentData((s) => ({ ...s, [item.key]: !s[item.key] }))}
                 >
                   <Checkbox
-                    checked={consents[item.key]}
-                    onCheckedChange={(c) => setConsents((s) => ({ ...s, [item.key]: !!c }))}
+                    checked={consentData[item.key]}
+                    onCheckedChange={(c) => setConsentData((s) => ({ ...s, [item.key]: !!c }))}
                     className="mt-1 pointer-events-auto"
                   />
                   <div className="flex-1 space-y-1">
@@ -163,11 +200,11 @@ export function PatientConsentOverlay({ patient, onComplete }: PatientConsentOve
               <Button
                 onClick={handleSave}
                 className="bg-teal-600 hover:bg-teal-700 text-white w-full sm:w-auto min-w-[200px] h-12 text-base"
-                disabled={!consents.clinical || loading}
+                disabled={!consentData.clinical || loading}
               >
                 {loading ? 'Salvando...' : 'Salvar Preferências e Continuar'}
               </Button>
-              {!consents.clinical && (
+              {!consentData.clinical && (
                 <p className="text-rose-500 text-sm font-medium text-center">
                   É necessário aceitar o consentimento de atendimento clínico para continuar.
                 </p>
