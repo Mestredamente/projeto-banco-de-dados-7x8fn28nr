@@ -123,6 +123,10 @@ export function Sidebar({ collapsed }: SidebarProps) {
     allowedItems = allowedItems.filter((i) => i.path !== '/grupos' && i.path !== '/telepsicologia')
   }
 
+  if (user?.role === 'paciente') {
+    allowedItems = allowedItems.filter((i) => i.path !== '/settings')
+  }
+
   allowedItems = allowedItems.filter(
     (item, index, self) => index === self.findIndex((t) => t.path === item.path),
   )
