@@ -28,6 +28,7 @@ import Financial from './pages/Financial'
 import SessionNotes from './pages/SessionNotes'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import PatientSettings from './pages/patient/PatientSettings'
 import ClinicAdmin from './pages/ClinicAdmin'
 import Secretaries from './pages/Secretaries'
 import Referrals from './pages/Referrals'
@@ -188,6 +189,12 @@ const App = () => (
                         </Route>
 
                         <Route path="/settings" element={<Settings />} />
+
+                        <Route element={<RouteGuard allowedModules={['paciente_portal']} />}>
+                          <Route element={<PatientPortalGuard />}>
+                            <Route path="/patient-portal/settings" element={<PatientSettings />} />
+                          </Route>
+                        </Route>
                         <Route path="/ajuda" element={<HelpManual />} />
                       </Route>
                     </Route>
