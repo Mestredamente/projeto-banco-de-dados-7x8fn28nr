@@ -2,7 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { useProfile } from '@/hooks/use-profile'
 import { PatientProfileCompletionBanner } from './PatientProfileCompletionBanner'
-import { PatientConsentOverlay } from '@/components/patients/PatientConsentOverlay'
+import { PatientOnboardingSimple } from '@/components/patient/PatientOnboardingSimple'
 import { useEffect, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
 
@@ -29,7 +29,7 @@ export function PatientPortalGuard() {
   return (
     <>
       {needsConsent && (
-        <PatientConsentOverlay patient={patient} onComplete={(updated) => setPatient(updated)} />
+        <PatientOnboardingSimple patient={patient} onComplete={(updated) => setPatient(updated)} />
       )}
       {patient && patient.cadastro_completo === false && !needsConsent && (
         <PatientProfileCompletionBanner
