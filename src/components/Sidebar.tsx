@@ -220,17 +220,19 @@ export function Sidebar({ collapsed }: SidebarProps) {
           collapsed ? 'items-center px-2' : '',
         )}
       >
-        <Link
-          to="/ajuda"
-          className={cn(
-            'flex items-center text-[14px] text-white/70 hover:text-white hover:bg-[rgba(255,255,255,0.04)] py-2 rounded-md transition-colors',
-            collapsed ? 'justify-center w-10 h-10 p-0' : 'px-2',
-          )}
-          title={collapsed ? 'Ajuda' : undefined}
-        >
-          <HelpCircle className={cn('h-[20px] w-[20px]', collapsed ? '' : 'mr-3')} />
-          {!collapsed && <span>Ajuda</span>}
-        </Link>
+        {user?.role !== 'paciente' && (
+          <Link
+            to="/ajuda"
+            className={cn(
+              'flex items-center text-[14px] text-white/70 hover:text-white hover:bg-[rgba(255,255,255,0.04)] py-2 rounded-md transition-colors',
+              collapsed ? 'justify-center w-10 h-10 p-0' : 'px-2',
+            )}
+            title={collapsed ? 'Ajuda' : undefined}
+          >
+            <HelpCircle className={cn('h-[20px] w-[20px]', collapsed ? '' : 'mr-3')} />
+            {!collapsed && <span>Ajuda</span>}
+          </Link>
+        )}
         {!collapsed && <div className="px-2 text-xs text-white/30 mt-2">{BRAND.nome} v1.0.0</div>}
       </div>
     </div>

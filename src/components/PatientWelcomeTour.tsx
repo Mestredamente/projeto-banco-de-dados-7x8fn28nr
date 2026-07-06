@@ -51,8 +51,8 @@ export function PatientWelcomeTour() {
     },
     { title: 'Financeiro', desc: 'Seus recibos ficam disponíveis na aba Financeiro.' },
     {
-      title: 'Ajuda',
-      desc: 'Se precisar de ajuda, use o botão Ajuda. Em caso de crise, ligue 188.',
+      title: 'Emergências',
+      desc: 'Em caso de crise ou emergência, ligue para o CVV (188) para apoio emocional ou SAMU (192) para emergências médicas. Você não está só.',
     },
     {
       title: 'Pronto!',
