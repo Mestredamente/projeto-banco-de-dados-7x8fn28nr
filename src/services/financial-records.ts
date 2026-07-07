@@ -11,3 +11,10 @@ export const confirmPayment = (recordId: string, paymentMethod: string) =>
     status: 'aguardando_confirmacao',
     payment_method: paymentMethod,
   })
+
+export const confirmPaymentByPsychologist = (recordId: string) =>
+  pb.send('/backend/v1/payments/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ record_id: recordId }),
+    headers: { 'Content-Type': 'application/json' },
+  })

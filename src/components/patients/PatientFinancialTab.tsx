@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button'
 import { ExternalLink } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
+import { AwaitingConfirmationSection } from './AwaitingConfirmationSection'
+import { formatCurrency } from '@/lib/financial-utils'
 
 export function PatientFinancialTab({ patientId }: { patientId: string }) {
   const [records, setRecords] = useState<any[]>([])
@@ -47,9 +49,6 @@ export function PatientFinancialTab({ patientId }: { patientId: string }) {
     .filter((r) => r.status === 'atrasado')
     .reduce((acc, r) => acc + (r.total || 0), 0)
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -78,6 +77,8 @@ export function PatientFinancialTab({ patientId }: { patientId: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <AwaitingConfirmationSection patientId={patientId} />
 
       <Card>
         <CardHeader>
