@@ -13,6 +13,7 @@ import {
   Edit,
   AlertTriangle,
   FileText,
+  History,
 } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ import { PatientFinancialTab } from '@/components/patients/PatientFinancialTab'
 import { PatientSessions } from '@/components/patients/PatientSessions'
 import { PatientReferralsTab } from '@/components/patients/PatientReferralsTab'
 import { PatientPreferencesTab } from '@/components/patients/PatientPreferencesTab'
+import { PatientAuditHistory } from '@/components/patients/PatientAuditHistory'
 import { PatientInsights } from '@/components/patients/PatientInsights'
 import { PatientScales } from '@/components/patients/PatientScales'
 import { PatientCrisisInterventions } from '@/components/patients/PatientCrisisInterventions'
@@ -148,6 +150,9 @@ export default function PatientProfile() {
             <TabsTrigger value="preferencias" className="flex gap-2 py-2">
               <Settings className="w-4 h-4" />{' '}
               <span className="hidden md:inline">Preferências</span>
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="flex gap-2 py-2">
+              <History className="w-4 h-4" /> <span className="hidden md:inline">Histórico</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -279,6 +284,9 @@ export default function PatientProfile() {
 
           <TabsContent value="preferencias" className="m-0">
             <PatientPreferencesTab patientId={patient.id} />
+          </TabsContent>
+          <TabsContent value="historico" className="m-0">
+            <PatientAuditHistory patientId={patient.id} />
           </TabsContent>
         </div>
       </Tabs>

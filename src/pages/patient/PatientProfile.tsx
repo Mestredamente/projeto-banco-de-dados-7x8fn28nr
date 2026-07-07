@@ -27,6 +27,7 @@ import { lookupCEP } from '@/lib/lookups'
 import { ProfilePhotoUpload } from '@/components/patient/ProfilePhotoUpload'
 import { useRealtime } from '@/hooks/use-realtime'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
+import { AuditHistorySection } from '@/components/patient/AuditHistorySection'
 
 const EMPTY_FORM = {
   phone: '',
@@ -512,6 +513,8 @@ export default function PatientProfile() {
           </CardContent>
         </Card>
       </form>
+
+      {patient && <AuditHistorySection patientId={patient.id} />}
     </div>
   )
 }

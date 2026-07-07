@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-07T01:11:14.096Z",
+  "generatedAt": "2026-07-07T01:20:39.776Z",
   "collections": [
     {
       "name": "users",
@@ -4791,6 +4791,74 @@
         "CREATE INDEX idx_crisis_alerts_patient ON crisis_alerts (patient_id)",
         "CREATE INDEX idx_crisis_alerts_psychologist ON crisis_alerts (psychologist_id)",
         "CREATE INDEX idx_crisis_alerts_severity ON crisis_alerts (severity)"
+      ]
+    },
+    {
+      "name": "profile_audit_log",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (patient_id.profile = @request.auth.id || @request.auth.role != 'paciente')",
+        "view": "@request.auth.id != '' && (patient_id.profile = @request.auth.id || @request.auth.role != 'paciente')",
+        "create": "@request.auth.id != ''",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "patient_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "patients"
+        },
+        {
+          "name": "field_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "old_value",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "new_value",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "changed_by",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ip_address",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_profile_audit_patient ON profile_audit_log (patient_id)",
+        "CREATE INDEX idx_profile_audit_created ON profile_audit_log (created DESC)"
       ]
     }
   ]
