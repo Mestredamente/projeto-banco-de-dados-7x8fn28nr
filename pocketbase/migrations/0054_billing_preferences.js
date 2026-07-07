@@ -64,9 +64,8 @@ migrate(
       fr.fields.add(new TextField({ name: 'description' }))
     }
 
-    const existingStatus = fr.fields.getByName('status')
-    if (existingStatus) {
-      fr.fields.remove(existingStatus)
+    if (fr.fields.getByName('status')) {
+      fr.fields.removeByName('status')
     }
     fr.fields.add(
       new SelectField({
@@ -102,8 +101,9 @@ migrate(
         'cancellation_policy',
       ]
       for (const name of patientFields) {
-        const f = patients.fields.getByName(name)
-        if (f) patients.fields.remove(f)
+        if (patients.fields.getByName(name)) {
+          patients.fields.removeByName(name)
+        }
       }
       app.save(patients)
     } catch (_) {}
@@ -112,12 +112,12 @@ migrate(
       const fr = app.findCollectionByNameOrId('financial_records')
       const frFields = ['due_time', 'auto_generated', 'description']
       for (const name of frFields) {
-        const f = fr.fields.getByName(name)
-        if (f) fr.fields.remove(f)
+        if (fr.fields.getByName(name)) {
+          fr.fields.removeByName(name)
+        }
       }
-      const statusField = fr.fields.getByName('status')
-      if (statusField) {
-        fr.fields.remove(statusField)
+      if (fr.fields.getByName('status')) {
+        fr.fields.removeByName('status')
       }
       fr.fields.add(
         new SelectField({

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-07T02:46:41.172Z",
+  "generatedAt": "2026-07-07T02:55:47.481Z",
   "collections": [
     {
       "name": "users",
@@ -824,6 +824,74 @@
         },
         {
           "name": "address_complement",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "session_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "accepted_payment_methods",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pix_key",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "absence_policy",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["cobra_falta", "nao_cobra_falta"]
+        },
+        {
+          "name": "billing_notifications",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "auto_billing_enabled",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "billing_frequency",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["avulsa", "semanal", "quinzenal", "mensal"]
+        },
+        {
+          "name": "billing_day",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sessions_per_period",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "billing_start_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cancellation_policy",
           "type": "text",
           "required": false,
           "system": false
@@ -1680,13 +1748,6 @@
           "system": false
         },
         {
-          "name": "status",
-          "type": "select",
-          "required": false,
-          "system": false,
-          "selectValues": ["pendente", "pago", "atrasado", "cancelado", "estornado"]
-        },
-        {
           "name": "receipt_url",
           "type": "text",
           "required": false,
@@ -1717,6 +1778,38 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "due_time",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "auto_generated",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "pendente",
+            "pago",
+            "atrasado",
+            "cancelado",
+            "estornado",
+            "aguardando_confirmacao"
+          ]
         }
       ],
       "indexes": []
