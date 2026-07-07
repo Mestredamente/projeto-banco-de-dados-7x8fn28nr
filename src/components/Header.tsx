@@ -125,6 +125,20 @@ export function Header({ sidebarCollapsed, setSidebarCollapsed }: HeaderProps) {
     navigate(getHomeRoute(role))
   }
 
+  const isPatient = user?.role === 'paciente'
+  const isPsychologist = user?.role === 'psicologo_autonomo' || user?.role === 'psicologo_vinculado'
+
+  const profileRoute = isPatient
+    ? '/patient-portal/profile'
+    : isPsychologist
+      ? '/psychologist-portal/profile'
+      : '/settings'
+  const settingsRoute = isPatient
+    ? '/patient-portal/settings'
+    : isPsychologist
+      ? '/psychologist-portal/settings'
+      : '/settings'
+
   const showContextSelector = userRoles.length > 1
 
   return (
@@ -298,13 +312,13 @@ export function Header({ sidebarCollapsed, setSidebarCollapsed }: HeaderProps) {
               asChild
               className="cursor-pointer py-2 px-3 focus:bg-gray-50 dark:focus:bg-gray-800"
             >
-              <Link to="/settings">Perfil</Link>
+              <Link to={profileRoute}>Perfil</Link>
             </DropdownMenuItem>
             <DropdownMenuItem
               asChild
               className="cursor-pointer py-2 px-3 focus:bg-gray-50 dark:focus:bg-gray-800"
             >
-              <Link to="/settings">Configurações</Link>
+              <Link to={settingsRoute}>Configurações</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
