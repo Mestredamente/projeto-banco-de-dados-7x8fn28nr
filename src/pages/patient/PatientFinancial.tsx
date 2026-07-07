@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DollarSign, Download, Package } from 'lucide-react'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function PatientFinancial() {
   const { patient, loading } = usePatient()
@@ -28,6 +29,17 @@ export default function PatientFinancial() {
       .then(setRecords)
       .catch(console.error)
   }, [patient])
+
+  useRealtime('financial_records', () => {
+    if (!patient) return
+    pb.collection('financial_records')
+      .getFullList({
+        filter: `patient="${patient.id}"`,
+        sort: '-due_date',
+      })
+      .then(setRecords)
+      .catch(console.error)
+  })
 
   if (loading) return <div>Carregando...</div>
 

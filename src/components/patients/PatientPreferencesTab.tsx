@@ -15,8 +15,9 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
-import { Copy, RefreshCw, Link as LinkIcon, Loader2, Save } from 'lucide-react'
+import { Copy, RefreshCw, Link as LinkIcon, Loader2, Save, CalendarClock } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { generateBillingSchedule } from '@/services/patient-billing'
 
 interface PatientPreferencesTabProps {
   patientId: string
@@ -30,6 +31,7 @@ export function PatientPreferencesTab({ patientId }: PatientPreferencesTabProps)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [billingGenerating, setBillingGenerating] = useState(false)
 
   const [patient, setPatient] = useState<any>(null)
   const [activeToken, setActiveToken] = useState<string>('')
@@ -161,6 +163,58 @@ export function PatientPreferencesTab({ patientId }: PatientPreferencesTabProps)
     })
   }
 
+  const handleGenerateBilling = async () => {
+    if (!patient) return
+    if (!patient.auto_billing_enabled) {
+      toast({
+        title: 'Atenção',
+        description: 'Ative o agendamento automático nas preferências.',
+        variant: 'destructive',
+      })
+      return
+    }
+    if (!patient.billing_frequency) {
+      toast({
+        title: 'Atenção',
+        description: 'Configure a frequência de cobrança.',
+        variant: 'destructive',
+      })
+      return
+    }
+    if (!patient.billing_day) {
+      toast({
+        title: 'Atenção',
+        description: 'Configure o dia de cobrança.',
+        variant: 'destructive',
+      })
+      return
+    }
+    if (!patient.session_value || patient.session_value === 0) {
+      toast({
+        title: 'Atenção',
+        description: 'Configure o valor da sessão.',
+        variant: 'destructive',
+      })
+      return
+    }
+    try {
+      setBillingGenerating(true)
+      await generateBillingSchedule(patientId)
+      toast({
+        title: 'Sucesso',
+        description: 'Agendamento gerado para os próximos 3 meses.',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Erro',
+        description: err?.message || 'Erro ao gerar agendamento.',
+        variant: 'destructive',
+      })
+    } finally {
+      setBillingGenerating(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center p-8">
@@ -171,6 +225,30 @@ export function PatientPreferencesTab({ patientId }: PatientPreferencesTabProps)
 
   return (
     <div className="space-y-6">
+      <Card className="border-green-200 bg-green-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-green-800">
+            <CalendarClock className="h-5 w-5" />
+            Agendamento Automático de Cobrança
+          </CardTitle>
+          <CardDescription>
+            Gere cobranças automáticas para os próximos 3 meses com base nas preferências do
+            paciente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleGenerateBilling}
+            disabled={billingGenerating}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {billingGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <CalendarClock className="mr-2 h-4 w-4" />
+            Gerar Agendamento Automático
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

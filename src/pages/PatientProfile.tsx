@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Activity,
   CreditCard,
+  DollarSign,
   Share2,
   Settings,
   Lightbulb,
@@ -29,6 +30,7 @@ import { PatientFinancialTab } from '@/components/patients/PatientFinancialTab'
 import { PatientSessions } from '@/components/patients/PatientSessions'
 import { PatientReferralsTab } from '@/components/patients/PatientReferralsTab'
 import { PatientPreferencesTab } from '@/components/patients/PatientPreferencesTab'
+import { PatientBillingPreferencesTab } from '@/components/patients/PatientBillingPreferencesTab'
 import { PatientAuditHistory } from '@/components/patients/PatientAuditHistory'
 import { PatientInsights } from '@/components/patients/PatientInsights'
 import { PatientScales } from '@/components/patients/PatientScales'
@@ -146,6 +148,9 @@ export default function PatientProfile() {
             <TabsTrigger value="encaminhamentos" className="flex gap-2 py-2">
               <Share2 className="w-4 h-4" />{' '}
               <span className="hidden md:inline">Encaminhamentos</span>
+            </TabsTrigger>
+            <TabsTrigger value="cobranca" className="flex gap-2 py-2">
+              <DollarSign className="w-4 h-4" /> <span className="hidden md:inline">Cobrança</span>
             </TabsTrigger>
             <TabsTrigger value="preferencias" className="flex gap-2 py-2">
               <Settings className="w-4 h-4" />{' '}
@@ -282,6 +287,9 @@ export default function PatientProfile() {
             <PatientReferralsTab patientId={patient.id} />
           </TabsContent>
 
+          <TabsContent value="cobranca" className="m-0">
+            <PatientBillingPreferencesTab patientId={patient.id} />
+          </TabsContent>
           <TabsContent value="preferencias" className="m-0">
             <PatientPreferencesTab patientId={patient.id} />
           </TabsContent>

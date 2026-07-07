@@ -59,3 +59,11 @@ export const updatePatientBillingPreferences = async (
 ) => {
   return await pb.collection('patients').update(patientId, data)
 }
+
+export const generateBillingSchedule = async (patientId: string) => {
+  return pb.send('/backend/v1/billing/generate-schedule', {
+    method: 'POST',
+    body: JSON.stringify({ patient_id: patientId }),
+    headers: { 'Content-Type': 'application/json' },
+  })
+}

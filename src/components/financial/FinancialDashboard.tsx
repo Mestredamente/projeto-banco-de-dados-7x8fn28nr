@@ -4,51 +4,57 @@ import { DollarSign, AlertCircle, Clock, TrendingUp } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { formatCurrency } from '@/lib/currency'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export function FinancialDashboard() {
   const [metrics, setMetrics] = useState({ pending: 0, received: 0, delinquent: 0, projected: 0 })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const now = new Date()
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  const loadData = async () => {
+    try {
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-        const [records, appointments] = await Promise.all([
-          pb.collection('financial_records').getFullList(),
-          pb.collection('appointments').getFullList({
-            filter: `scheduled_date >= '${startOfMonth}' && (status = 'agendado' || status = 'confirmado_paciente')`,
-          }),
-        ])
+      const [records, appointments] = await Promise.all([
+        pb.collection('financial_records').getFullList(),
+        pb.collection('appointments').getFullList({
+          filter: `scheduled_date >= '${startOfMonth}' && (status = 'agendado' || status = 'confirmado_paciente')`,
+        }),
+      ])
 
-        let pending = 0,
-          received = 0,
-          delinquent = 0,
-          projected = 0
+      let pending = 0,
+        received = 0,
+        delinquent = 0,
+        projected = 0
 
-        records.forEach((r) => {
-          if (r.status === 'pendente') pending += r.total || 0
-          if (r.status === 'pago' && r.payment_date && r.payment_date >= startOfMonth)
-            received += r.total || 0
-          if (r.status === 'atrasado' && r.due_date && r.due_date < thirtyDaysAgo)
-            delinquent += r.total || 0
-        })
+      records.forEach((r) => {
+        if (r.status === 'pendente') pending += r.total || 0
+        if (r.status === 'pago' && r.payment_date && r.payment_date >= startOfMonth)
+          received += r.total || 0
+        if (r.status === 'atrasado' && r.due_date && r.due_date < thirtyDaysAgo)
+          delinquent += r.total || 0
+      })
 
-        appointments.forEach((a) => {
-          projected += a.session_value || 0
-        })
+      appointments.forEach((a) => {
+        projected += a.session_value || 0
+      })
 
-        setMetrics({ pending, received, delinquent, projected })
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
+      setMetrics({ pending, received, delinquent, projected })
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-    load()
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
+
+  useRealtime('financial_records', () => {
+    loadData()
+  })
 
   if (loading) {
     return (

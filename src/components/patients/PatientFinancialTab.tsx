@@ -91,7 +91,8 @@ export function PatientFinancialTab({ patientId }: { patientId: string }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Vencimento</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead>Horário</TableHead>
+                  <TableHead>Descrição</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Recibo</TableHead>
@@ -103,7 +104,8 @@ export function PatientFinancialTab({ patientId }: { patientId: string }) {
                     <TableCell>
                       {r.due_date ? new Date(r.due_date).toLocaleDateString('pt-BR') : '-'}
                     </TableCell>
-                    <TableCell className="capitalize">{r.type}</TableCell>
+                    <TableCell>{r.due_time || '-'}</TableCell>
+                    <TableCell>{r.description || r.type || '-'}</TableCell>
                     <TableCell>{formatCurrency(r.total || 0)}</TableCell>
                     <TableCell>
                       <Badge
