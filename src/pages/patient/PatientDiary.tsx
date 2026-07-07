@@ -7,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
-import { HeartPulse, Calendar as CalendarIcon } from 'lucide-react'
+import { HeartPulse, Calendar as CalendarIcon, AlertCircle } from 'lucide-react'
 
 const WORDS = ['Feliz', 'Ansioso', 'Triste', 'Irritado', 'Calmo', 'Cansado', 'Motivado']
 const CRISIS_WORDS = ['Ansioso', 'Irritado', 'Triste']
+
+const MIN_CHARS = 10
+const MAX_CHARS = 5000
 
 const getEmoji = (val: number) => {
   if (val <= 2) return '😢'
@@ -25,6 +29,7 @@ export default function PatientDiary() {
   const { patient, loading } = usePatient()
   const [score, setScore] = useState(5)
   const [selectedWords, setSelectedWords] = useState<string[]>([])
+  const [textContent, setTextContent] = useState('')
   const [entries, setEntries] = useState<any[]>([])
   const [submitting, setSubmitting] = useState(false)
 
@@ -45,18 +50,37 @@ export default function PatientDiary() {
     setSelectedWords((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]))
   }
 
+  const charCount = textContent.length
+  const isTextValid = charCount >= MIN_CHARS && charCount <= MAX_CHARS
+  const showTextError = charCount > 0 && charCount < MIN_CHARS
+
   const handleSubmit = async () => {
-    if (selectedWords.length === 0) {
-      toast({ title: 'Selecione pelo menos uma palavra', variant: 'destructive' })
+    if (textContent.trim().length < MIN_CHARS) {
+      toast({
+        title: 'Texto muito curto',
+        description: `Escreva pelo menos ${MIN_CHARS} caracteres no seu diário.`,
+        variant: 'destructive',
+      })
       return
     }
+    if (charCount > MAX_CHARS) {
+      toast({
+        title: 'Texto muito longo',
+        description: `O limite é de ${MAX_CHARS} caracteres.`,
+        variant: 'destructive',
+      })
+      return
+    }
+
     setSubmitting(true)
     try {
       const isCrisis = selectedWords.some((w) => CRISIS_WORDS.includes(w))
-      const record = await pb.collection('diary_entries').create({
+      const finalContent = textContent.trim()
+
+      await pb.collection('diary_entries').create({
         patient: patient.id,
         type: 'sentimentos',
-        content: selectedWords.join(', '),
+        content: finalContent,
         mood: getEmoji(score),
         mood_score: score,
         is_visible_to_professional: isCrisis,
@@ -66,6 +90,7 @@ export default function PatientDiary() {
       toast({ title: 'Registro salvo', description: 'Seu diário foi atualizado com sucesso.' })
       setScore(5)
       setSelectedWords([])
+      setTextContent('')
       loadEntries()
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
@@ -136,7 +161,7 @@ export default function PatientDiary() {
                   <Badge
                     key={w}
                     variant={selectedWords.includes(w) ? 'default' : 'outline'}
-                    className={`cursor-pointer px-3 py-1 text-sm ${selectedWords.includes(w) ? 'bg-teal-600 hover:bg-teal-700' : 'hover:bg-gray-100'}`}
+                    className={`cursor-pointer px-3 py-1 text-sm transition-colors ${selectedWords.includes(w) ? 'bg-teal-600 hover:bg-teal-700' : 'hover:bg-gray-100'}`}
                     onClick={() => toggleWord(w)}
                   >
                     {w}
@@ -145,10 +170,40 @@ export default function PatientDiary() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Descreva seus sentimentos <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value.slice(0, MAX_CHARS))}
+                placeholder="O que você está sentindo hoje?"
+                minLength={MIN_CHARS}
+                maxLength={MAX_CHARS}
+                rows={6}
+                className={`resize-none ${showTextError ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+              />
+              <div className="flex items-center justify-between">
+                {showTextError ? (
+                  <span className="flex items-center gap-1 text-xs text-red-500 animate-fade-in">
+                    <AlertCircle className="h-3 w-3" />
+                    Mínimo de {MIN_CHARS} caracteres
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">Campo obrigatório</span>
+                )}
+                <span
+                  className={`text-xs font-medium ${charCount > MAX_CHARS * 0.9 ? 'text-amber-600' : 'text-gray-400'}`}
+                >
+                  {charCount}/{MAX_CHARS}
+                </span>
+              </div>
+            </div>
+
             <Button
               onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full bg-teal-600 text-white"
+              disabled={submitting || !isTextValid}
+              className="w-full bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Salvando...' : 'Salvar Registro'}
             </Button>
@@ -168,17 +223,14 @@ export default function PatientDiary() {
             ) : (
               <div className="space-y-4">
                 {entries.slice(0, 5).map((e) => (
-                  <div
-                    key={e.id}
-                    className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div>
+                  <div key={e.id} className="p-3 bg-gray-50 rounded-lg space-y-1">
+                    <div className="flex justify-between items-center">
                       <p className="text-sm font-medium text-gray-900">
                         {format(parseISO(e.entry_date), 'dd/MM/yyyy')}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">{e.content}</p>
+                      <div className="text-2xl">{e.mood}</div>
                     </div>
-                    <div className="text-2xl">{e.mood}</div>
+                    <p className="text-xs text-gray-600 line-clamp-3">{e.content}</p>
                   </div>
                 ))}
               </div>
