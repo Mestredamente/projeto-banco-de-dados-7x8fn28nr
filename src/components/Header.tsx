@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Breadcrumbs } from './Breadcrumbs'
 import { useBranding } from '@/hooks/use-branding'
+import { usePatientPhoto } from '@/hooks/use-patient-photo'
 import { BRAND } from '@/config/branding'
 
 interface HeaderProps {
@@ -52,6 +53,7 @@ export function Header({ sidebarCollapsed, setSidebarCollapsed }: HeaderProps) {
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState<any[]>([])
   const { systemSettings } = useBranding()
+  const { photoUrl } = usePatientPhoto()
 
   const loadNotifications = async () => {
     if (!user) return
@@ -290,9 +292,17 @@ export function Header({ sidebarCollapsed, setSidebarCollapsed }: HeaderProps) {
               variant="ghost"
               className="relative h-[32px] w-[32px] rounded-full focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 p-0 overflow-hidden"
             >
-              <div className="h-full w-full rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold border border-primary/20">
-                {user?.name?.charAt(0) || <UserCircle className="h-5 w-5" />}
-              </div>
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt={user?.name || 'Perfil'}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold border border-primary/20">
+                  {user?.name?.charAt(0) || <UserCircle className="h-5 w-5" />}
+                </div>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

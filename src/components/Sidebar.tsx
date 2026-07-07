@@ -23,6 +23,7 @@ import { useBranding } from '@/hooks/use-branding'
 import pb from '@/lib/pocketbase/client'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { BRAND } from '@/config/branding'
+import { usePatientPhoto } from '@/hooks/use-patient-photo'
 
 interface SidebarProps {
   collapsed?: boolean
@@ -34,6 +35,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const { user } = useAuth()
   const { activeProfile, hasPermission } = useProfile()
   const { clinic, systemSettings } = useBranding()
+  const { photoUrl } = usePatientPhoto()
 
   const ALL_NAV_ITEMS = [
     {
@@ -230,6 +232,25 @@ export function Sidebar({ collapsed }: SidebarProps) {
           collapsed ? 'items-center px-2' : '',
         )}
       >
+        {user && (
+          <div
+            className={cn(
+              'flex items-center rounded-md transition-colors',
+              collapsed ? 'justify-center w-10 h-10 p-0' : 'px-2 py-1.5 gap-3',
+            )}
+          >
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-white/20 bg-white/10">
+              {photoUrl ? (
+                <img src={photoUrl} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-sm font-bold text-white/80">
+                  {user.name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
+            {!collapsed && <span className="text-xs text-white/60 truncate">{user.name}</span>}
+          </div>
+        )}
         {user?.role !== 'paciente' && (
           <Link
             to="/ajuda"

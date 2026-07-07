@@ -4,12 +4,14 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Lock, Calendar, Phone, CheckCircle2, UserCircle, Mail, IdCard } from 'lucide-react'
+import { Lock, Calendar, Phone, CheckCircle2, UserCircle, Mail, IdCard, Camera } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
 import { format } from 'date-fns'
 import { maskPhone, maskCPF } from '@/lib/masks'
+import { ProfilePhotoUpload } from '@/components/patient/ProfilePhotoUpload'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function PatientProfile() {
   const { user } = useAuth()
@@ -20,6 +22,7 @@ export default function PatientProfile() {
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [dateError, setDateError] = useState('')
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -38,6 +41,16 @@ export default function PatientProfile() {
       })
       .catch(() => {})
   }, [user])
+
+  useRealtime(
+    'patients',
+    (e) => {
+      if (patient && e.record.id === patient.id) {
+        setPatient(e.record)
+      }
+    },
+    !!patient,
+  )
 
   const validatePhone = (value: string): boolean => {
     const digits = value.replace(/\D/g, '')
@@ -125,6 +138,48 @@ export default function PatientProfile() {
         </h1>
         <p className="text-gray-500 mt-1">Visualize e gerencie suas informações pessoais.</p>
       </div>
+
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => setPhotoDialogOpen(true)}
+          className="relative group rounded-full"
+        >
+          <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-primary/20 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            {patient?.profile_photo ? (
+              <img
+                src={pb.files.getURL(patient, patient.profile_photo) + '?t=' + Date.now()}
+                alt="Foto de perfil"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-4xl font-bold text-primary">
+                {user?.name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+            )}
+          </div>
+          <div className="absolute bottom-1 right-1 bg-primary text-white rounded-full p-2 shadow-lg group-hover:scale-110 transition-transform">
+            <Camera className="w-4 h-4" />
+          </div>
+        </button>
+      </div>
+
+      <ProfilePhotoUpload
+        open={photoDialogOpen}
+        onOpenChange={setPhotoDialogOpen}
+        patientId={patient?.id || ''}
+        currentPhoto={
+          patient?.profile_photo ? pb.files.getURL(patient, patient.profile_photo) : undefined
+        }
+        onUploaded={() => {
+          if (patient) {
+            pb.collection('patients')
+              .getOne(patient.id)
+              .then(setPatient)
+              .catch(() => {})
+          }
+        }}
+      />
 
       <Card>
         <CardHeader>
