@@ -63,7 +63,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
     },
     { name: 'Diário', path: '/patient-portal/diary', icon: HeartPulse, module: 'paciente_portal' },
     {
-      name: 'Financeiro',
+      name: '💰 Financeira',
       path: '/patient-portal/financial',
       icon: DollarSign,
       module: 'paciente_portal',
