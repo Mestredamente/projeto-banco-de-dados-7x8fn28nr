@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-07T01:05:46.608Z",
+  "generatedAt": "2026-07-07T01:11:14.096Z",
   "collections": [
     {
       "name": "users",
@@ -819,6 +819,12 @@
         {
           "name": "profile_photo",
           "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_complement",
+          "type": "text",
           "required": false,
           "system": false
         }
