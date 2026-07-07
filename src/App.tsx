@@ -15,6 +15,7 @@ import PatientDiary from './pages/patient/PatientDiary'
 import PatientFinancial from './pages/patient/PatientFinancial'
 import PatientEvolutions from './pages/patient/PatientEvolutions'
 import PatientConsents from './pages/patient/PatientConsents'
+import PatientProfilePage from './pages/patient/PatientProfile'
 import { PatientPortalGuard } from './components/patient/PatientPortalGuard'
 import Login from './pages/Login'
 import ConfirmAppointment from './pages/ConfirmAppointment'
@@ -116,6 +117,10 @@ const App = () => (
                         <Route element={<RouteGuard allowedModules={['paciente_portal']} />}>
                           <Route element={<PatientPortalGuard />}>
                             <Route path="/patient-portal" element={<PatientDashboard />} />
+                            <Route
+                              path="/patient-portal/profile"
+                              element={<PatientProfilePage />}
+                            />
                             <Route path="/patient-portal/agenda" element={<PatientAgenda />} />
                             <Route path="/patient-portal/diary" element={<PatientDiary />} />
                             <Route
