@@ -12,7 +12,6 @@ import {
   DollarSign,
   FileText,
   ClipboardList,
-  Settings as SettingsIcon,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -74,7 +73,6 @@ export default function PatientDashboard() {
       <Tabs defaultValue="inicio">
         <TabsList className="bg-gray-100 dark:bg-gray-800">
           <TabsTrigger value="inicio">Início</TabsTrigger>
-          <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
           <TabsTrigger value="ajuda" className="text-red-600 data-[state=active]:text-red-700">
             Ajuda e Emergência
           </TabsTrigger>
@@ -153,26 +151,6 @@ export default function PatientDashboard() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="configuracoes" className="mt-6">
-          <Card className="hover:shadow-md transition-shadow border-t-4 border-t-purple-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <SettingsIcon className="h-5 w-5 text-purple-600" />
-                Configurações
-              </CardTitle>
-              <CardDescription>Dados pessoais e segurança da conta</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link
-                to="/patient-portal/settings"
-                className="text-purple-600 font-medium hover:underline text-sm"
-              >
-                Acessar configurações →
-              </Link>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="ajuda" className="mt-6">

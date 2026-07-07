@@ -78,6 +78,12 @@ export function Sidebar({ collapsed }: SidebarProps) {
       icon: ShieldAlert,
       module: 'paciente_portal',
     },
+    {
+      name: 'Configurações',
+      path: '/patient-portal/settings',
+      icon: Settings,
+      module: 'paciente_portal',
+    },
     { name: 'Pacientes', path: '/patients', icon: Users, module: 'pacientes' },
     { name: 'Grupos Terapêuticos', path: '/grupos', icon: Users, module: 'pacientes' },
     { name: '🖥️ Telepsicologia', path: '/telepsicologia', icon: LayoutDashboard, module: 'agenda' },
@@ -125,6 +131,10 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
   if (user?.role === 'paciente') {
     allowedItems = allowedItems.filter((i) => i.path !== '/settings')
+  }
+
+  if (user?.role !== 'paciente') {
+    allowedItems = allowedItems.filter((i) => i.path !== '/patient-portal/settings')
   }
 
   allowedItems = allowedItems.filter(
