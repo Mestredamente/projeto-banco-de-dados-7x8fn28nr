@@ -22,16 +22,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, CalendarDays } from 'lucide-react'
+import { useFinancialFilter } from '@/hooks/use-financial-filter'
+import { buildFinancialFilter } from '@/services/financial-records'
 
 export function FinancialRecords() {
   const [records, setRecords] = useState<any[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [cycleModalOpen, setCycleModalOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
+  const { professionalId, clinicId, isAdminRole } = useFinancialFilter()
 
   const load = async () => {
     try {
+      const filter = buildFinancialFilter({ professionalId, clinicId, isAdminRole })
       const res = await pb.collection('financial_records').getFullList({
+        filter,
         sort: '-created',
         expand: 'patient',
       })
@@ -43,7 +48,7 @@ export function FinancialRecords() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [professionalId, clinicId, isAdminRole])
 
   const handleRefund = async (record: any) => {
     const reason = window.prompt('Motivo do estorno (obrigatório):')

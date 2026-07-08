@@ -5,10 +5,13 @@ import pb from '@/lib/pocketbase/client'
 import { formatCurrency } from '@/lib/currency'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useFinancialFilter } from '@/hooks/use-financial-filter'
+import { buildFinancialFilter } from '@/services/financial-records'
 
 export function FinancialDashboard() {
   const [metrics, setMetrics] = useState({ pending: 0, received: 0, delinquent: 0, projected: 0 })
   const [loading, setLoading] = useState(true)
+  const { professionalId, clinicId, isAdminRole } = useFinancialFilter()
 
   const loadData = async () => {
     try {
@@ -16,10 +19,23 @@ export function FinancialDashboard() {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
+      const finFilter = buildFinancialFilter({ professionalId, clinicId, isAdminRole })
+      const apptFilterParts = [
+        `scheduled_date >= '${startOfMonth}'`,
+        `(status = 'agendado' || status = 'confirmado_paciente')`,
+      ]
+      if (isAdminRole && clinicId) {
+        apptFilterParts.push(`clinic="${clinicId}"`)
+      } else if (professionalId) {
+        apptFilterParts.push(`professional="${professionalId}"`)
+      }
+
       const [records, appointments] = await Promise.all([
-        pb.collection('financial_records').getFullList(),
+        pb.collection('financial_records').getFullList({
+          filter: finFilter,
+        }),
         pb.collection('appointments').getFullList({
-          filter: `scheduled_date >= '${startOfMonth}' && (status = 'agendado' || status = 'confirmado_paciente')`,
+          filter: apptFilterParts.join(' && '),
         }),
       ])
 
@@ -50,7 +66,7 @@ export function FinancialDashboard() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [professionalId, clinicId, isAdminRole])
 
   useRealtime('financial_records', () => {
     loadData()
