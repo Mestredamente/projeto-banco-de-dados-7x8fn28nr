@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { usePatient } from '@/hooks/use-patient'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
@@ -14,10 +16,28 @@ import {
   ClipboardList,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { format, parseISO } from 'date-fns'
 
 export default function PatientDashboard() {
   const { user } = useAuth()
+  const { patient } = usePatient()
   const [pendingAssignments, setPendingAssignments] = useState<any[]>([])
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([])
+
+  const loadAppointments = useCallback(async () => {
+    if (!patient) return
+    try {
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+      const records = await pb.collection('appointments').getFullList({
+        filter: `patient="${patient.id}" && scheduled_date >= "${todayStr}" && status != "cancelado"`,
+        sort: 'scheduled_date,start_time',
+        expand: 'professional',
+      })
+      setUpcomingAppointments(records)
+    } catch (error) {
+      console.error('Failed to fetch appointments:', error)
+    }
+  }, [patient])
 
   useEffect(() => {
     if (user) {
@@ -38,6 +58,14 @@ export default function PatientDashboard() {
       fetchAssignments()
     }
   }, [user])
+
+  useEffect(() => {
+    loadAppointments()
+  }, [loadAppointments])
+
+  useRealtime('appointments', () => {
+    loadAppointments()
+  })
 
   return (
     <div className="space-y-6 animate-fade-in p-6 max-w-5xl mx-auto pb-12">
@@ -85,9 +113,28 @@ export default function PatientDashboard() {
                   <CalendarIcon className="h-5 w-5 text-teal-600" />
                   Minha Agenda
                 </CardTitle>
-                <CardDescription>Próximas sessões</CardDescription>
+                <CardDescription>
+                  {upcomingAppointments.length > 0
+                    ? `${upcomingAppointments.length} sessão(ões) próxima(s)`
+                    : 'Próximas sessões'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
+                {upcomingAppointments.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {upcomingAppointments.slice(0, 3).map((appt) => (
+                      <div key={appt.id} className="flex items-center gap-2 text-sm">
+                        <div className="bg-teal-100 text-teal-700 rounded px-2 py-1 text-xs font-medium">
+                          {format(parseISO(appt.scheduled_date), 'dd/MM')}
+                        </div>
+                        <span className="text-gray-600">{appt.start_time}</span>
+                        <span className="text-gray-400 truncate">
+                          {appt.expand?.professional?.name || ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <Link
                   to="/patient-portal/agenda"
                   className="text-teal-600 font-medium hover:underline text-sm"

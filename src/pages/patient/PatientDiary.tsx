@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { usePatient } from '@/hooks/use-patient'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -33,18 +34,26 @@ export default function PatientDiary() {
   const [entries, setEntries] = useState<any[]>([])
   const [submitting, setSubmitting] = useState(false)
 
-  const loadEntries = async () => {
+  const loadEntries = useCallback(async () => {
     if (!patient) return
-    const records = await pb.collection('diary_entries').getFullList({
-      filter: `patient="${patient.id}"`,
-      sort: '-entry_date',
-    })
-    setEntries(records)
-  }
+    try {
+      const records = await pb.collection('diary_entries').getFullList({
+        filter: `patient="${patient.id}"`,
+        sort: '-entry_date',
+      })
+      setEntries(records)
+    } catch (err) {
+      console.error(err)
+    }
+  }, [patient])
 
   useEffect(() => {
     loadEntries()
-  }, [patient])
+  }, [loadEntries])
+
+  useRealtime('diary_entries', () => {
+    loadEntries()
+  })
 
   const toggleWord = (w: string) => {
     setSelectedWords((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]))

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
   History,
 } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -47,14 +48,11 @@ export default function PatientProfile() {
 
   const defaultTab = location.state?.tab || 'resumo'
 
-  useEffect(() => {
-    if (id) loadPatient()
-  }, [id])
-
-  const loadPatient = async () => {
+  const loadPatient = useCallback(async () => {
+    if (!id) return
     try {
       setLoading(true)
-      const data = await pb.collection('patients').getOne(id!)
+      const data = await pb.collection('patients').getOne(id)
       setPatient(data)
     } catch (error) {
       console.error(error)
@@ -63,7 +61,21 @@ export default function PatientProfile() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, navigate, toast])
+
+  useEffect(() => {
+    loadPatient()
+  }, [loadPatient])
+
+  useRealtime(
+    'patients',
+    (e) => {
+      if (id && e.record.id === id) {
+        setPatient(e.record)
+      }
+    },
+    !!id,
+  )
 
   if (loading) {
     return (

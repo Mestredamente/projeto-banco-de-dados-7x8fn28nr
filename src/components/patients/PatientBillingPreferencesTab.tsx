@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Loader2, Save } from 'lucide-react'
+import { useRealtime } from '@/hooks/use-realtime'
 import {
   billingPreferencesSchema,
   getPatientBillingPreferences,
@@ -53,31 +54,40 @@ export function PatientBillingPreferencesTab({ patientId }: { patientId: string 
   const paymentMethods = watch('accepted_payment_methods') || []
   const notifications = watch('billing_notifications') || []
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const prefs = await getPatientBillingPreferences(patientId)
-        reset({
-          session_value: prefs.session_value,
-          accepted_payment_methods: prefs.accepted_payment_methods || [],
-          pix_key: prefs.pix_key || '',
-          absence_policy: prefs.absence_policy || 'nao_cobra_falta',
-          billing_notifications: prefs.billing_notifications || ['Email'],
-          auto_billing_enabled: prefs.auto_billing_enabled || false,
-          billing_frequency: prefs.billing_frequency,
-          billing_day: prefs.billing_day,
-          sessions_per_period: prefs.sessions_per_period,
-          billing_start_date: prefs.billing_start_date || '',
-          cancellation_policy: prefs.cancellation_policy || '',
-        } as any)
-      } catch {
-        toast.error('Erro ao carregar preferências de cobrança')
-      } finally {
-        setLoading(false)
-      }
+  const load = useCallback(async () => {
+    try {
+      const prefs = await getPatientBillingPreferences(patientId)
+      reset({
+        session_value: prefs.session_value,
+        accepted_payment_methods: prefs.accepted_payment_methods || [],
+        pix_key: prefs.pix_key || '',
+        absence_policy: prefs.absence_policy || 'nao_cobra_falta',
+        billing_notifications: prefs.billing_notifications || ['Email'],
+        auto_billing_enabled: prefs.auto_billing_enabled || false,
+        billing_frequency: prefs.billing_frequency,
+        billing_day: prefs.billing_day,
+        sessions_per_period: prefs.sessions_per_period,
+        billing_start_date: prefs.billing_start_date || '',
+        cancellation_policy: prefs.cancellation_policy || '',
+      } as any)
+    } catch {
+      toast.error('Erro ao carregar preferências de cobrança')
+    } finally {
+      setLoading(false)
     }
-    load()
   }, [patientId, reset])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  useRealtime(
+    'patients',
+    () => {
+      load()
+    },
+    !!patientId,
+  )
 
   const toggleArr = (field: keyof BillingPreferences, value: string, current: string[]) => {
     const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value]

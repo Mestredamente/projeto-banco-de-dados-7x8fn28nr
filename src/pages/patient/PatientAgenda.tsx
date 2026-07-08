@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { usePatient } from '@/hooks/use-patient'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -31,7 +32,7 @@ export default function PatientAgenda() {
   const [justificativa, setJustificativa] = useState('')
   const [sugestao, setSugestao] = useState('')
 
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     if (!patient) return
     try {
       const records = await pb.collection('appointments').getFullList({
@@ -43,11 +44,15 @@ export default function PatientAgenda() {
     } catch (err) {
       console.error(err)
     }
-  }
+  }, [patient])
 
   useEffect(() => {
     loadAppointments()
-  }, [patient])
+  }, [loadAppointments])
+
+  useRealtime('appointments', () => {
+    loadAppointments()
+  })
 
   const handleReschedule = async (e: React.FormEvent) => {
     e.preventDefault()

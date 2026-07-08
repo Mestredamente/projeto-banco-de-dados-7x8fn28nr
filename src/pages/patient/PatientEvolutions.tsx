@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { usePatient } from '@/hooks/use-patient'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 import { format, parseISO } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,17 +12,27 @@ export default function PatientEvolutions() {
   const { patient, loading } = usePatient()
   const [notes, setNotes] = useState<any[]>([])
 
-  useEffect(() => {
+  const loadNotes = useCallback(async () => {
     if (!patient) return
-    pb.collection('session_notes')
-      .getFullList({
+    try {
+      const records = await pb.collection('session_notes').getFullList({
         filter: `patient="${patient.id}" && shared_with_patient=true`,
         sort: '-session_date',
         expand: 'professional',
       })
-      .then(setNotes)
-      .catch(console.error)
+      setNotes(records)
+    } catch (err) {
+      console.error(err)
+    }
   }, [patient])
+
+  useEffect(() => {
+    loadNotes()
+  }, [loadNotes])
+
+  useRealtime('session_notes', () => {
+    loadNotes()
+  })
 
   const requestMoreInfo = async (noteId: string, professionalId: string) => {
     try {

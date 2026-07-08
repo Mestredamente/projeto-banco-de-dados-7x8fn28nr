@@ -1,18 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
 import { FileText, Lock, LockOpen } from 'lucide-react'
 
 export default function SessionNotes() {
   const [notes, setNotes] = useState<any[]>([])
 
-  useEffect(() => {
-    pb.collection('session_notes')
-      .getFullList({ expand: 'patient,professional', sort: '-created' })
-      .then(setNotes)
-      .catch(console.error)
+  const loadNotes = useCallback(async () => {
+    try {
+      const records = await pb
+        .collection('session_notes')
+        .getFullList({ expand: 'patient,professional', sort: '-created' })
+      setNotes(records)
+    } catch (err) {
+      console.error(err)
+    }
   }, [])
+
+  useEffect(() => {
+    loadNotes()
+  }, [loadNotes])
+
+  useRealtime('session_notes', () => {
+    loadNotes()
+  })
 
   return (
     <div className="space-y-6 animate-fade-in">
