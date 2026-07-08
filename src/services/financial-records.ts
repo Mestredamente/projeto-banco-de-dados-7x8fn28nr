@@ -1,5 +1,9 @@
 import pb from '@/lib/pocketbase/client'
 
+export interface PatientFinancialFilterOptions {
+  userId: string
+}
+
 export interface FinancialFilterOptions {
   professionalId: string
   clinicId: string
@@ -49,3 +53,20 @@ export const confirmPaymentByPsychologist = (recordId: string) =>
     body: JSON.stringify({ record_id: recordId }),
     headers: { 'Content-Type': 'application/json' },
   })
+
+export const getMyFinancialRecords = async (userId: string) => {
+  const patient = await pb.collection('patients').getFirstListItem(`profile="${userId}"`)
+  return pb.collection('financial_records').getFullList({
+    filter: `patient="${patient.id}"`,
+    sort: '-due_date,-created',
+  })
+}
+
+export const getMyFinancialRecordsExpanded = async (userId: string) => {
+  const patient = await pb.collection('patients').getFirstListItem(`profile="${userId}"`)
+  return pb.collection('financial_records').getFullList({
+    filter: `patient="${patient.id}"`,
+    sort: '-due_date,-created',
+    expand: 'patient,professional,clinic',
+  })
+}

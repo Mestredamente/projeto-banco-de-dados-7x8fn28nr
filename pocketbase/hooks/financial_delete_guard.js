@@ -6,6 +6,13 @@ onRecordDeleteRequest((e) => {
   }
 
   const userRole = e.auth.getString('role') || ''
+
+  if (userRole === 'paciente') {
+    return e.forbiddenError(
+      'Patients cannot delete financial records. Please contact your psychologist or clinic administrator.',
+    )
+  }
+
   if (userRole !== 'psicologo_autonomo' && userRole !== 'psicologo_vinculado') {
     e.next()
     return
