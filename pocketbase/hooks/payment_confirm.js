@@ -30,9 +30,16 @@ routerAdd(
     const userRole = authUser ? authUser.getString('role') : ''
 
     var isOwner = recordProfessional === authId
+    var isPsychologist = userRole === 'psicologo_autonomo' || userRole === 'psicologo_vinculado'
     var isAdminOfClinic =
       (userRole === 'admin_clinica' || userRole === 'gestor_saas') &&
       (authUser ? authUser.getString('contexto_ativo') : '') === recordClinic
+
+    if (isPsychologist && !isOwner) {
+      return e.forbiddenError(
+        'Psychologists can only confirm payments for their own financial records.',
+      )
+    }
 
     if (!isOwner && !isAdminOfClinic) {
       return e.forbiddenError(
