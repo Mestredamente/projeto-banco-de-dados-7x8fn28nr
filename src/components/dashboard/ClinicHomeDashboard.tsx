@@ -16,9 +16,11 @@ import {
 } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/hooks/use-auth'
+import { useManagerFilter } from '@/hooks/use-manager-filter'
 
 export function ClinicHomeDashboard() {
   const { user } = useAuth()
+  const { clinicIds, isSaaSAdmin } = useManagerFilter()
   const [stats, setStats] = useState({
     professionals: 0,
     appointmentsToday: 0,
@@ -32,22 +34,50 @@ export function ClinicHomeDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
+        const profFilterParts = [`deleted_at = ""`]
+        if (!isSaaSAdmin && clinicIds.length > 0) {
+          profFilterParts.push(`(${clinicIds.map((id) => `clinic="${id}"`).join(' || ')})`)
+        }
         const profs = await pb
           .collection('clinic_professionals')
-          .getList(1, 1, { filter: `deleted_at = ""` })
+          .getList(1, 1, { filter: profFilterParts.join(' && ') })
         const today = new Date().toISOString().split('T')[0]
+        const apptFilterParts = [
+          `scheduled_date >= "${today} 00:00:00"`,
+          `scheduled_date <= "${today} 23:59:59"`,
+          `deleted_at = ""`,
+        ]
+        if (!isSaaSAdmin && clinicIds.length > 0) {
+          apptFilterParts.push(`(${clinicIds.map((id) => `clinic="${id}"`).join(' || ')})`)
+        }
         const apps = await pb.collection('appointments').getList(1, 1, {
-          filter: `scheduled_date >= "${today} 00:00:00" && scheduled_date <= "${today} 23:59:59" && deleted_at = ""`,
+          filter: apptFilterParts.join(' && '),
         })
 
-        const rooms = await pb.collection('rooms').getList(1, 1)
+        const roomFilter =
+          !isSaaSAdmin && clinicIds.length > 0
+            ? clinicIds.map((id) => `clinic="${id}"`).join(' || ')
+            : undefined
+        const rooms = await pb.collection('rooms').getList(1, 1, {
+          filter: roomFilter,
+        })
 
+        const finFilterParts = [`status = "pago"`, `deleted_at = ""`]
+        if (!isSaaSAdmin && clinicIds.length > 0) {
+          finFilterParts.push(`(${clinicIds.map((id) => `clinic="${id}"`).join(' || ')})`)
+        }
         const finRecords = await pb.collection('financial_records').getFullList({
-          filter: `status = "pago" && deleted_at = ""`,
+          filter: finFilterParts.join(' && '),
         })
         const revenue = finRecords.reduce((acc, curr) => acc + (curr.total || curr.value || 0), 0)
 
-        const stockItems = await pb.collection('inventory_items').getFullList()
+        const stockFilter =
+          !isSaaSAdmin && clinicIds.length > 0
+            ? clinicIds.map((id) => `clinic="${id}"`).join(' || ')
+            : undefined
+        const stockItems = await pb.collection('inventory_items').getFullList({
+          filter: stockFilter,
+        })
         const lowStockItems = stockItems.filter((item) => item.quantity <= (item.min_stock || 0))
 
         setStats({
